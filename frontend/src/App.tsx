@@ -29,14 +29,14 @@ function App() {
               className={view === 'forum' ? 'primary' : ''}
               onClick={() => setView('forum')}
             >
-              Everyone (Forum)
+              みんなの広場 (掲示板)
             </button>
             {role === 'student' && (
               <button
                 className={view === 'chat' ? 'primary' : ''}
                 onClick={() => setView('chat')}
               >
-                My AI Buddy
+                マイAIバディ (相談)
               </button>
             )}
             {role === 'lecturer' && (
@@ -44,7 +44,7 @@ function App() {
                 className={view === 'monitoring' ? 'primary' : ''}
                 onClick={() => setView('monitoring')}
               >
-                AI Insights
+                AIインサイト
               </button>
             )}
           </div>
@@ -52,13 +52,13 @@ function App() {
 
         <div className="flex items-center gap-4">
           <div className="text-xs text-slate-400">
-            Current Role: <span className="font-bold text-white uppercase">{role}</span>
+            現在のモード: <span className="font-bold text-white uppercase">{role === 'student' ? '学生' : '講師'}</span>
           </div>
           <button
             onClick={() => handleRoleChange(role === 'student' ? 'lecturer' : 'student')}
             style={{ fontSize: '0.8rem', padding: '4px 8px' }}
           >
-            Switch to {role === 'student' ? 'Lecturer' : 'Student'}
+            {role === 'student' ? '講師モードへ切替' : '学生モードへ切替'}
           </button>
         </div>
       </header>
@@ -68,16 +68,65 @@ function App() {
         {view === 'forum' && <ForumFeed role={role} />}
         {view === 'chat' && role === 'student' && <AIChatWindow />}
         {view === 'monitoring' && role === 'lecturer' && (
-          <div className="h-full flex flex-col justify-center items-center text-slate-400">
-            <h2>AI Insights Board</h2>
-            <p>Ask AI about student trends here.</p>
-            {/* Reuse AIChatWindow or dedicated component later */}
-            <div className="mt-4 p-8 border border-dashed border-slate-700 rounded-lg">
-              [AI Insight Component Placeholder]
-            </div>
-          </div>
+          <LecturerInsightBoard />
         )}
       </main>
+    </div>
+  );
+}
+
+function LecturerInsightBoard() {
+  const [query, setQuery] = useState('');
+  const [report, setReport] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const askInsight = async () => {
+    if (!query.trim() || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:8000/lecturer/insight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      setReport(data.response);
+    } catch (err) {
+      console.error(err);
+      setReport('エラー: インサイトを取得できませんでした。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col gap-4">
+      <div className="flex gap-2">
+        <input
+          className="flex-1"
+          placeholder="AIに質問: 例「今日、学生がつまずいている点はどこ？」"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && askInsight()}
+        />
+        <button className="primary" onClick={askInsight} disabled={loading}>
+          {loading ? '分析中...' : '分析する'}
+        </button>
+      </div>
+
+      <div className="flex-1 bg-slate-800 rounded-lg p-6 border border-slate-700 overflow-y-auto">
+        {report ? (
+          <div className="whitespace-pre-wrap leading-relaxed">
+            <h3 className="text-indigo-400 font-bold mb-4">AIインサイト レポート</h3>
+            {report}
+          </div>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-slate-500">
+            <p>まだ生成されたレポートはありません。</p>
+            <p className="text-sm">学生のチャットログを分析するには質問を入力してください。</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
