@@ -7,17 +7,17 @@ interface Props {
 export default function ForumFeed({ role }: Props) {
     // Mock data
     const [questions] = useState([
-        { id: 1, author: 'Student#123', content: 'What is the difference between let and var?', tags: ['#js', '#urgent'], likes: 5 },
-        { id: 2, author: 'Student#456', content: 'I cannot install the dependencies.', tags: ['#env'], likes: 2 },
+        { id: 1, author: '学生#123', content: 'let と var の違いは何ですか？', tags: ['#js', '#至急'], likes: 5 },
+        { id: 2, author: '学生#456', content: '依存関係のインストールがうまくいきません。', tags: ['#env'], likes: 2 },
     ]);
 
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="font-bold text-lg">Class Forum</h2>
+                <h2 className="font-bold text-lg">みんなの広場</h2>
                 {role === 'student' && (
                     <button className="primary shadow-lg shadow-indigo-500/50">
-                        + New Question
+                        + 質問する
                     </button>
                 )}
             </div>
@@ -36,8 +36,8 @@ export default function ForumFeed({ role }: Props) {
                         <p className="text-slate-200 mb-4">{q.content}</p>
                         <div className="flex gap-4 text-sm">
                             <button className="text-slate-400 hover:text-white">❤️ {q.likes}</button>
-                            <button className="text-slate-400 hover:text-white">💬 Comment</button>
-                            {role === 'lecturer' && <button className="text-red-400 hover:text-red-300">Delete</button>}
+                            <button className="text-slate-400 hover:text-white">💬 コメント</button>
+                            {role === 'lecturer' && <button className="text-red-400 hover:text-red-300">削除</button>}
                         </div>
                     </div>
                 ))}

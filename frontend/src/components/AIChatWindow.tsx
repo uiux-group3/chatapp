@@ -1,23 +1,69 @@
+import { useState } from 'react';
+
+const SESSION_ID = 'student-' + Math.random().toString(36).substr(2, 9); // Simple random session ID for prototype
+
 export default function AIChatWindow() {
+    const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const sendMessage = async () => {
+        if (!input.trim() || loading) return;
+
+        const userMsg = input;
+        setInput('');
+        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setLoading(true);
+
+        try {
+            const res = await fetch('http://localhost:8000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: SESSION_ID, message: userMsg }),
+            });
+            const data = await res.json();
+            setMessages(prev => [...prev, { role: 'model', content: data.response }]);
+        } catch (error) {
+            console.error(error);
+            setMessages(prev => [...prev, { role: 'model', content: 'エラー: AIに接続できませんでした。' }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col">
             <div className="mb-4 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <h2 className="font-bold text-lg">Private AI Tutor</h2>
+                <h2 className="font-bold text-lg">マイAIバディ (プライベート)</h2>
             </div>
 
-            <div className="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700 flex flex-col items-center justify-center text-slate-500">
-                <p>AI Chat History will appear here.</p>
-                <p className="text-sm mt-2">Only you can see this conversation.</p>
+            <div className="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700 overflow-y-auto flex flex-col gap-3">
+                {messages.length === 0 && (
+                    <div className="text-center text-slate-500 mt-10">
+                        <p>講義についてなんでも聞いてみよう。</p>
+                        <p className="text-xs">このチャットは他の学生には見えません。</p>
+                    </div>
+                )}
+                {messages.map((m, i) => (
+                    <div key={i} className={`p-3 rounded-lg max-w-[80%] ${m.role === 'user' ? 'bg-indigo-600 self-end ml-auto' : 'bg-slate-700 self-start'}`}>
+                        <div className="text-xs text-slate-400 mb-1 uppercase">{m.role === 'model' ? 'AI Tutor' : 'あなた'}</div>
+                        <div className="whitespace-pre-wrap">{m.content}</div>
+                    </div>
+                ))}
+                {loading && <div className="text-slate-500 text-sm animate-pulse">AIが入力中...</div>}
             </div>
 
             <div className="flex gap-2">
                 <input
                     type="text"
-                    placeholder="Ask AI anything..."
+                    placeholder="AIになんでも聞いてね..."
                     className="flex-1"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
                 />
-                <button className="primary">Send</button>
+                <button className="primary" onClick={sendMessage} disabled={loading}>送信</button>
             </div>
         </div>
     );
