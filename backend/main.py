@@ -15,8 +15,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 MODEL_NAME = 'gemini-2.5-flash'
 
+# Lightweight schema migration (SQLite)
+def _ensure_questions_schema(engine) -> None:
+    with engine.begin() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(questions)").fetchall()}
+        if "resolved" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE questions ADD COLUMN resolved INTEGER NOT NULL DEFAULT 0"
+            )
+
 # Initialize DB
 models.Base.metadata.create_all(bind=database.engine)
+_ensure_questions_schema(database.engine)
 
 app = FastAPI()
 
@@ -56,6 +66,10 @@ class QuestionUpdate(BaseModel):
     content: str
     tags: list[str] | None = None
 
+class QuestionResolveRequest(BaseModel):
+    username: str
+    resolved: bool = True
+
 class UserLogin(BaseModel):
     username: str
 
@@ -76,6 +90,7 @@ class QuestionResponse(BaseModel):
     content: str
     tags: list[str]
     likes: int # Keep for backward compat
+    resolved: bool
     reactions: dict[str, int]
     user_reaction: str | None = None
     comment_count: int = 0
@@ -232,7 +247,8 @@ def get_forum_context(db: Session, limit: int = 10) -> str:
     context_lines = []
     for q in questions:
         # Simple format
-        line = f"QID:{q.id} Author:{q.author} Content:{q.content} (Tags: {', '.join(q.tags) if q.tags else 'None'})"
+        status = "Resolved" if getattr(q, "resolved", False) else "Open"
+        line = f"QID:{q.id} Status:{status} Author:{q.author} Content:{q.content} (Tags: {', '.join(q.tags) if q.tags else 'None'})"
         context_lines.append(line)
     
     return "\n".join(context_lines)
@@ -360,6 +376,7 @@ def get_questions(username: str | None = None, db: Session = Depends(get_db)):
             "content": q.content,
             "tags": q.tags,
             "likes": q.likes,
+            "resolved": q.resolved,
             "reactions": reaction_counts,
             "user_reaction": user_reaction,
             "comment_count": comment_count,
@@ -394,6 +411,7 @@ def get_question(question_id: int, username: str | None = None, db: Session = De
         "content": q.content,
         "tags": q.tags,
         "likes": q.likes,
+        "resolved": q.resolved,
         "reactions": reaction_counts,
         "user_reaction": user_reaction,
         "comment_count": comment_count,
@@ -415,9 +433,49 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
         "content": db_question.content,
         "tags": db_question.tags,
         "likes": 0,
+        "resolved": db_question.resolved,
         "reactions": {},
         "user_reaction": None,
         "comment_count": 0,
+    }
+
+@app.put("/questions/{question_id}/resolve", response_model=QuestionResponse)
+def resolve_question(question_id: int, payload: QuestionResolveRequest, db: Session = Depends(get_db)):
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+    if q.author != username:
+        raise HTTPException(status_code=403, detail="You can only resolve your own posts")
+
+    q.resolved = bool(payload.resolved)
+    db.commit()
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    user_id = user.id if user else None
+    reactions_query = db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == q.id).all()
+    comment_count = db.query(models.QuestionComment).filter(models.QuestionComment.question_id == q.id).count()
+
+    reaction_counts: dict[str, int] = {}
+    user_reaction: str | None = None
+    for r in reactions_query:
+        reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+        if user_id and r.user_id == user_id:
+            user_reaction = r.reaction_type
+
+    return {
+        "id": q.id,
+        "author": q.author,
+        "content": q.content,
+        "tags": q.tags,
+        "likes": q.likes,
+        "resolved": q.resolved,
+        "reactions": reaction_counts,
+        "user_reaction": user_reaction,
+        "comment_count": comment_count,
     }
 
 @app.put("/questions/{question_id}", response_model=QuestionResponse)
@@ -458,6 +516,7 @@ def update_question(question_id: int, payload: QuestionUpdate, db: Session = Dep
         "content": q.content,
         "tags": q.tags,
         "likes": q.likes,
+        "resolved": q.resolved,
         "reactions": reaction_counts,
         "user_reaction": user_reaction,
         "comment_count": comment_count,

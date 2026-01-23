@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, PickleType
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, PickleType, Boolean
 from sqlalchemy.orm import relationship
 import datetime
 from database import Base
@@ -18,6 +18,7 @@ class Question(Base):
     content = Column(String)
     tags = Column(PickleType, default=[]) 
     likes = Column(Integer, default=0) # Deprecated but kept for compatibility
+    resolved = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class QuestionReaction(Base):

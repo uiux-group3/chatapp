@@ -10,6 +10,7 @@ interface Question {
   author: string;
   content: string;
   tags: string[];
+  resolved: boolean;
   comment_count: number;
   reactions: Record<string, number>;
   user_reaction: string | null;
@@ -140,6 +141,33 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
       alert('編集に失敗しました');
     } finally {
       setSavingQuestion(false);
+    }
+  };
+
+  const setResolved = async (resolved: boolean) => {
+    if (!user) {
+      alert('解決済みにするにはログインしてね！');
+      return;
+    }
+    if (!question) return;
+
+    setQuestion(prev => (prev ? { ...prev, resolved } : prev));
+    try {
+      const res = await fetch(`/api/questions/${questionId}/resolve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user.username,
+          resolved,
+        }),
+      });
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      setQuestion(data);
+    } catch (err) {
+      console.error(err);
+      alert('更新に失敗しました');
+      await load();
     }
   };
 
@@ -305,10 +333,22 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
       {question && (
         <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+          {question.resolved && (
+            <div className="mb-3 px-4 py-3 rounded-lg bg-indigo-600 text-real-white font-bold flex items-center gap-2">
+              <span className="text-lg">✅</span>
+              <span>解決済み</span>
+            </div>
+          )}
           <div className="flex justify-between items-center text-sm text-slate-400 mb-2">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">👤</div>
               <span className="font-medium">{question.author}</span>
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded-full ${question.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
+                  }`}
+              >
+                {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
+              </span>
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
               {Array.isArray(question.tags) &&
@@ -349,9 +389,20 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
             <div>
               <p className="text-slate-200 whitespace-pre-wrap">{question.content}</p>
               {user?.username === question.author && (
-                <button className="text-slate-400 text-xs hover:text-white mt-2" onClick={startEditQuestion}>
-                  編集
-                </button>
+                <div className="flex items-center gap-3 mt-2">
+                  <button className="text-slate-400 text-xs hover:text-white" onClick={startEditQuestion}>
+                    編集
+                  </button>
+                  <button
+                    className={`text-xs ${question.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
+                      }`}
+                    onClick={() => setResolved(!question.resolved)}
+                    disabled={editingQuestion}
+                    title={question.resolved ? '未解決に戻す' : '解決済みにする'}
+                  >
+                    {question.resolved ? '未解決に戻す' : '解決済みにする'}
+                  </button>
+                </div>
               )}
             </div>
           )}

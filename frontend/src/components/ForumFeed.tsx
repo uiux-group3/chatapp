@@ -16,6 +16,7 @@ interface Question {
     author: string;
     content: string;
     tags: string[];
+    resolved: boolean;
     reactions: Record<string, number>;
     user_reaction: string | null;
     comment_count: number;
@@ -217,6 +218,32 @@ export default function ForumFeed({ role, user }: Props) {
         }
     };
 
+    const setResolved = async (questionId: number, resolved: boolean) => {
+        if (!user) {
+            alert("解決済みにするにはログインしてね！");
+            return;
+        }
+
+        setQuestions(prev => prev.map(q => (q.id === questionId ? { ...q, resolved } : q)));
+        try {
+            const res = await fetch(`/api/questions/${questionId}/resolve`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: user.username,
+                    resolved,
+                }),
+            });
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+            setQuestions(prev => prev.map(q => (q.id === questionId ? data : q)));
+        } catch (err) {
+            console.error(err);
+            alert("更新に失敗しました");
+            fetchQuestions();
+        }
+    };
+
     if (selectedQuestionId !== null) {
         return (
             <QuestionThread
@@ -308,6 +335,12 @@ export default function ForumFeed({ role, user }: Props) {
                                     </div>
                                     <span className="font-medium">{q.author}</span>
                                     {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
+                                    <span
+                                        className={`text-xs font-bold px-3 py-1 rounded-full ${q.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
+                                            }`}
+                                    >
+                                        {q.resolved ? '✅ 解決済み' : '🟡 未解決'}
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-2">
 	                                    <div className="flex gap-2 flex-wrap justify-end">
@@ -315,6 +348,19 @@ export default function ForumFeed({ role, user }: Props) {
 	                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
 	                                        ))}
 	                                    </div>
+	                                    {isMyQuestion && (
+	                                        <button
+	                                            className={`text-xs ${q.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
+	                                                }`}
+	                                            onClick={(e) => {
+	                                                e.stopPropagation();
+	                                                setResolved(q.id, !q.resolved);
+	                                            }}
+	                                            title={q.resolved ? "未解決に戻す" : "解決済みにする"}
+	                                        >
+	                                            {q.resolved ? '未解決に戻す' : '解決済みにする'}
+	                                        </button>
+	                                    )}
 	                                    {isMyQuestion && (
 	                                        <button
 	                                            className="text-slate-400 text-xs hover:text-white"
