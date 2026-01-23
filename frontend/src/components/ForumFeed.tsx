@@ -335,12 +335,35 @@ export default function ForumFeed({ role, user }: Props) {
                                     </div>
                                     <span className="font-medium">{q.author}</span>
                                     {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
-                                    <span
-                                        className={`text-xs font-bold px-3 py-1 rounded-full ${q.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
-                                            }`}
-                                    >
-                                        {q.resolved ? '✅ 解決済み' : '🟡 未解決'}
-                                    </span>
+                                    {isMyQuestion ? (
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${q.resolved ? 'bg-indigo-600 text-real-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-900 hover:bg-slate-600'
+                                                }`}
+                                            title={q.resolved ? "クリックで未解決に戻す" : "クリックで解決済みにする"}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setResolved(q.id, !q.resolved);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setResolved(q.id, !q.resolved);
+                                                }
+                                            }}
+                                        >
+                                            {q.resolved ? '✅ 解決済み' : '🟡 未解決'}
+                                        </span>
+                                    ) : (
+                                        <span
+                                            className={`text-xs font-bold px-3 py-1 rounded-full ${q.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
+                                                }`}
+                                        >
+                                            {q.resolved ? '✅ 解決済み' : '🟡 未解決'}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
 	                                    <div className="flex gap-2 flex-wrap justify-end">

@@ -343,12 +343,31 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">👤</div>
               <span className="font-medium">{question.author}</span>
-              <span
-                className={`text-xs font-bold px-3 py-1 rounded-full ${question.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
-                  }`}
-              >
-                {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
-              </span>
+              {user?.username === question.author ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${question.resolved ? 'bg-indigo-600 text-real-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-900 hover:bg-slate-600'
+                    }`}
+                  title={question.resolved ? 'クリックで未解決に戻す' : 'クリックで解決済みにする'}
+                  onClick={() => setResolved(!question.resolved)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setResolved(!question.resolved);
+                    }
+                  }}
+                >
+                  {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
+                </span>
+              ) : (
+                <span
+                  className={`text-xs font-bold px-3 py-1 rounded-full ${question.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
+                    }`}
+                >
+                  {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
+                </span>
+              )}
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
               {Array.isArray(question.tags) &&
