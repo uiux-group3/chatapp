@@ -41,6 +41,7 @@ export default function ForumFeed({ role, user }: Props) {
     const [editContent, setEditContent] = useState('');
     const [editTags, setEditTags] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false);
 
     const fetchQuestions = async () => {
         try {
@@ -256,7 +257,7 @@ export default function ForumFeed({ role, user }: Props) {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
+            <div className={`forum-feed-header flex justify-between items-center ${isHeaderHidden ? 'forum-feed-header--hidden' : ''}`}>
                 <h2 className="font-bold text-lg">みんなの広場</h2>
                 {/* Small button removed */}
             </div>
@@ -288,7 +289,13 @@ export default function ForumFeed({ role, user }: Props) {
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto space-y-8 pr-2">
+            <div
+                className="flex-1 overflow-y-auto space-y-8 pr-2"
+                onScroll={(e) => {
+                    const next = e.currentTarget.scrollTop > 12;
+                    setIsHeaderHidden(prev => (prev === next ? prev : next));
+                }}
+            >
                 {/* Large Ask Question Button Card */}
                 {role === 'student' && !showForm && (
                      <button 

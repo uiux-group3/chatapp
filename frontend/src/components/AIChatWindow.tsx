@@ -15,6 +15,7 @@ export default function AIChatWindow({ user }: Props) {
     const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string, timestamp?: string }[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false);
 
     // Persistent session ID based on user ID, or random if not logged in (though App.tsx enforces login now)
     const sessionId = user ? `student-${user.id}` : 'guest-' + Math.random().toString(36).substr(2, 9);
@@ -79,13 +80,19 @@ export default function AIChatWindow({ user }: Props) {
     };
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="mb-4 flex items-center gap-2">
+        <div className="ai-chat-window">
+            <div className={`ai-chat-header flex items-center gap-2 ${isHeaderHidden ? 'ai-chat-header--hidden' : ''}`}>
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 <h2 className="font-bold text-lg">AIメンター</h2>
             </div>
 
-            <div className="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700 overflow-y-auto flex flex-col gap-8">
+            <div
+                className="ai-chat-messages bg-slate-800/50 rounded-lg p-4 border border-slate-700 flex flex-col gap-8"
+                onScroll={(e) => {
+                    const next = e.currentTarget.scrollTop > 12;
+                    setIsHeaderHidden(prev => (prev === next ? prev : next));
+                }}
+            >
                 {messages.length === 0 && (
                     <div className="text-center text-slate-500 mt-10">
                         <p>講義についてなんでも聞いてみよう。</p>
@@ -114,7 +121,7 @@ export default function AIChatWindow({ user }: Props) {
                 {loading && <div className="text-slate-500 text-sm animate-pulse">AIが入力中...</div>}
             </div>
 
-            <div className="flex gap-2 w-full items-end">
+            <div className="ai-chat-composer flex gap-2 w-full items-end">
                 <textarea
                     placeholder="まずは状況を1行で。うまく書けなくてもOK"
                     className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
