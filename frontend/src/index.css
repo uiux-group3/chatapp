@@ -363,6 +363,19 @@ textarea:focus {
   word-break: break-word;
 }
 
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.line-clamp-3-fade {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+}
+
 .w-16 {
   width: 4rem;
   min-width: 4rem;

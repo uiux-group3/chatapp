@@ -442,7 +442,7 @@ export default function ForumFeed({ role, user }: Props) {
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
+                                <p className="text-slate-200 mb-4 whitespace-pre-wrap line-clamp-3-fade">{q.content}</p>
                             )}
 
                             {/* Reaction Bar */}

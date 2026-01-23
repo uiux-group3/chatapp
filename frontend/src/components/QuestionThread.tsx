@@ -144,6 +144,31 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     }
   };
 
+  const deleteQuestion = async () => {
+    if (!user) return;
+    if (!question) return;
+    if (user.username !== question.author) {
+      alert('自分の投稿のみ削除できます');
+      return;
+    }
+    if (!confirm('この投稿を削除しますか？')) return;
+
+    setQuestionReactionMenuOpen(false);
+    setActiveReactionMenu(null);
+    try {
+      const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+      onBack();
+    } catch (err) {
+      console.error(err);
+      alert('削除に失敗しました');
+      await load();
+    }
+  };
+
   const setResolved = async (resolved: boolean) => {
     if (!user) {
       alert('解決済みにするにはログインしてね！');
@@ -334,8 +359,8 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
       {question && (
         <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
           {question.resolved && (
-            <div className="mb-3 px-4 py-3 rounded-lg bg-indigo-600 text-real-white font-bold flex items-center gap-2">
-              <span className="text-lg">✅</span>
+            <div className="mb-4 px-4 py-2 rounded-lg bg-indigo-600 text-real-white font-bold text-sm flex items-center gap-2">
+              <span>✅</span>
               <span>解決済み</span>
             </div>
           )}
@@ -343,39 +368,32 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">👤</div>
               <span className="font-medium">{question.author}</span>
-              {user?.username === question.author ? (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className={`text-xs font-bold px-3 py-1 rounded-full cursor-pointer ${question.resolved ? 'bg-indigo-600 text-real-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-900 hover:bg-slate-600'
-                    }`}
-                  title={question.resolved ? 'クリックで未解決に戻す' : 'クリックで解決済みにする'}
-                  onClick={() => setResolved(!question.resolved)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setResolved(!question.resolved);
-                    }
-                  }}
-                >
-                  {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
-                </span>
-              ) : (
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full ${question.resolved ? 'bg-indigo-600 text-real-white' : 'bg-slate-700 text-slate-900'
-                    }`}
-                >
-                  {question.resolved ? '✅ 解決済み' : '🟡 未解決'}
-                </span>
-              )}
             </div>
-            <div className="flex gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {Array.isArray(question.tags) &&
                 question.tags.map((tag, i) => (
                   <span key={i} className="text-indigo-400">
                     {tag.startsWith('#') ? tag : '#' + tag}
                   </span>
                 ))}
+              {user?.username === question.author && !editingQuestion && (
+                <>
+                  <button
+                    className={`text-xs ${question.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
+                      }`}
+                    onClick={() => setResolved(!question.resolved)}
+                    title={question.resolved ? '未解決に戻す' : '解決済みにする'}
+                  >
+                    {question.resolved ? '未解決に戻す' : '解決済みにする'}
+                  </button>
+                  <button className="text-slate-400 text-xs hover:text-white" onClick={startEditQuestion}>
+                    編集
+                  </button>
+                  <button className="text-red-400 text-xs hover:text-red-300" onClick={deleteQuestion}>
+                    削除
+                  </button>
+                </>
+              )}
             </div>
           </div>
           {editingQuestion ? (
@@ -407,22 +425,6 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
           ) : (
             <div>
               <p className="text-slate-200 whitespace-pre-wrap">{question.content}</p>
-              {user?.username === question.author && (
-                <div className="flex items-center gap-3 mt-2">
-                  <button className="text-slate-400 text-xs hover:text-white" onClick={startEditQuestion}>
-                    編集
-                  </button>
-                  <button
-                    className={`text-xs ${question.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
-                      }`}
-                    onClick={() => setResolved(!question.resolved)}
-                    disabled={editingQuestion}
-                    title={question.resolved ? '未解決に戻す' : '解決済みにする'}
-                  >
-                    {question.resolved ? '未解決に戻す' : '解決済みにする'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
