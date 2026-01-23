@@ -112,6 +112,59 @@ def test_flow():
         print(f"[FAIL] DB Error: {e}")
         return False
 
+    # 5. Test Reactions (New)
+    print("[TEST] Testing Reactions...")
+    
+    # 5a. Create a question
+    q_content = "Reaction Test Question"
+    print(f"[TEST] Creating question: '{q_content}'")
+    status, q_body = make_request("/questions", "POST", {"author": username, "content": q_content, "tags": ["test"]})
+    if status != 200:
+        print(f"[FAIL] Create Question failed: {status}")
+        return False
+    q_id = q_body["id"]
+    print(f"[PASS] Question created. ID: {q_id}")
+    
+    # 5b. Add Reaction
+    print("[TEST] Adding 'like' reaction...")
+    status, r_body = make_request(f"/questions/{q_id}/react", "POST", {"username": username, "reaction_type": "like"})
+    if status != 200 or r_body.get("status") != "added":
+        print(f"[FAIL] Add reaction failed: {status} {r_body}")
+        return False
+    print("[PASS] Reaction added.")
+    
+    # 5c. Verify Reaction Count via GET
+    print("[TEST] Verifying reaction count...")
+    status, questions = make_request(f"/questions?username={username}", "GET")
+    if status != 200:
+         print(f"[FAIL] Get Questions failed: {status}")
+         return False
+    
+    q_found = False
+    for q in questions:
+        if q["id"] == q_id:
+            q_found = True
+            reactions = q.get("reactions", {})
+            user_reaction = q.get("user_reaction")
+            if reactions.get("like") == 1 and user_reaction == "like":
+                print("[PASS] Reaction count and user status correct.")
+            else:
+                 print(f"[FAIL] Reaction data mismatch: {q}")
+                 return False
+            break
+    
+    if not q_found:
+        print("[FAIL] Created question not found in list.")
+        return False
+
+    # 5d. Toggle Off Reaction
+    print("[TEST] Toggling off reaction...")
+    status, r_body = make_request(f"/questions/{q_id}/react", "POST", {"username": username, "reaction_type": "like"})
+    if status != 200 or r_body.get("status") != "removed":
+        print(f"[FAIL] Remove reaction failed: {status} {r_body}")
+        return False
+    print("[PASS] Reaction removed.")
+
     print("=== VERIFICATION SUCCESSFUL ===")
     return True
 

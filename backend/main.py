@@ -59,12 +59,18 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ReactionRequest(BaseModel):
+    username: str
+    reaction_type: str
+
 class QuestionResponse(BaseModel):
     id: int
     author: str
     content: str
     tags: list[str]
-    likes: int
+    likes: int # Keep for backward compat
+    reactions: dict[str, int]
+    user_reaction: str | None = None
     
     class Config:
         from_attributes = True
@@ -183,8 +189,40 @@ async def get_lecturer_insight(request: InsightRequest, db: Session = Depends(ge
 
 # Forum Endpoints
 @app.get("/questions", response_model=list[QuestionResponse])
-def get_questions(db: Session = Depends(get_db)):
-    return db.query(models.Question).order_by(models.Question.created_at.desc()).all()
+def get_questions(username: str | None = None, db: Session = Depends(get_db)):
+    questions = db.query(models.Question).order_by(models.Question.created_at.desc()).all()
+    
+    # Get user if username provided
+    user_id = None
+    if username:
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user:
+            user_id = user.id
+
+    result = []
+    for q in questions:
+        # Count reactions
+        # This is N+1 query problem potential but fine for prototype scale
+        reactions_query = db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == q.id).all()
+        
+        reaction_counts = {}
+        user_reaction = None
+        
+        for r in reactions_query:
+            reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+            if user_id and r.user_id == user_id:
+                user_reaction = r.reaction_type
+        
+        result.append({
+            "id": q.id,
+            "author": q.author,
+            "content": q.content,
+            "tags": q.tags,
+            "likes": q.likes,
+            "reactions": reaction_counts,
+            "user_reaction": user_reaction
+        })
+    return result
 
 @app.post("/questions", response_model=QuestionResponse)
 def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
@@ -196,4 +234,50 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
     db.add(db_question)
     db.commit()
     db.refresh(db_question)
-    return db_question
+    return {
+        "id": db_question.id,
+        "author": db_question.author,
+        "content": db_question.content,
+        "tags": db_question.tags,
+        "likes": 0,
+        "reactions": {},
+        "user_reaction": None
+    }
+
+@app.post("/questions/{question_id}/react")
+def react_to_question(question_id: int, req: ReactionRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == req.username).first()
+    if not user:
+         # Auto-create user if not exists (Robustness for prototype)
+         user = models.User(username=req.username)
+         db.add(user)
+         db.commit()
+         db.refresh(user)
+
+    # Check existing reaction
+    existing = db.query(models.QuestionReaction).filter(
+        models.QuestionReaction.question_id == question_id,
+        models.QuestionReaction.user_id == user.id
+    ).first()
+
+    if existing:
+        if existing.reaction_type == req.reaction_type:
+            # Toggle off
+            db.delete(existing)
+            db.commit()
+            return {"status": "removed"}
+        else:
+            # Change reaction
+            existing.reaction_type = req.reaction_type
+            db.commit()
+            return {"status": "updated"}
+    else:
+        # Create new
+        new_reaction = models.QuestionReaction(
+             question_id=question_id,
+             user_id=user.id,
+             reaction_type=req.reaction_type
+        )
+        db.add(new_reaction)
+        db.commit()
+        return {"status": "added"}

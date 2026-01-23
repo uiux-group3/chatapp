@@ -16,9 +16,18 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     author = Column(String, default="Anonymous")
     content = Column(String)
-    tags = Column(PickleType, default=[]) # Storing list as pickle or JSON string. Pickle is easier for lists but careful with security. For this app it's fine or use comma separated string. Let's use PickelType for simplicity with lists.
-    likes = Column(Integer, default=0)
+    tags = Column(PickleType, default=[]) 
+    likes = Column(Integer, default=0) # Deprecated but kept for compatibility
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class QuestionReaction(Base):
+    __tablename__ = "question_reactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    reaction_type = Column(String) # like, insightful, curious, funny
+
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"

@@ -15,8 +15,16 @@ interface Question {
     author: string;
     content: string;
     tags: string[];
-    likes: number;
+    reactions: Record<string, number>;
+    user_reaction: string | null;
 }
+
+const REACTION_TYPES = [
+    { type: 'like', icon: '❤️', label: 'いいね' },
+    { type: 'insightful', icon: '💡', label: 'なるほど' },
+    { type: 'curious', icon: '🤔', label: '気になる' },
+    { type: 'funny', icon: '😂', label: 'うける' },
+];
 
 export default function ForumFeed({ role, user }: Props) {
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -27,7 +35,9 @@ export default function ForumFeed({ role, user }: Props) {
 
     const fetchQuestions = async () => {
         try {
-            const res = await fetch('/api/questions');
+            // Pass username if logged in to get 'user_reaction' status
+            const query = user?.username ? `?username=${encodeURIComponent(user.username)}` : '';
+            const res = await fetch(`/api/questions${query}`);
             if (res.ok) {
                 const data = await res.json();
                 setQuestions(data);
@@ -41,7 +51,7 @@ export default function ForumFeed({ role, user }: Props) {
         fetchQuestions();
         const interval = setInterval(fetchQuestions, 10000); // Poll every 10s
         return () => clearInterval(interval);
-    }, []);
+    }, [user]); // Re-fetch if user changes
 
     const submitQuestion = async () => {
         if (!inputContent.trim() || loading) return;
@@ -68,6 +78,48 @@ export default function ForumFeed({ role, user }: Props) {
             alert("投稿に失敗しました");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleReaction = async (questionId: number, reactionType: string) => {
+        if (!user) {
+            alert("リアクションするにはログインしてね！");
+            return;
+        }
+        
+        // Optimistic update
+        setQuestions(prev => prev.map(q => {
+            if (q.id !== questionId) return q;
+            
+            const isRemoving = q.user_reaction === reactionType;
+            const newReaction = isRemoving ? null : reactionType;
+            const newCounts = { ...q.reactions };
+            
+            // Remove old reaction if exists
+            if (q.user_reaction) {
+                newCounts[q.user_reaction] = Math.max(0, (newCounts[q.user_reaction] || 0) - 1);
+            }
+            // Add new reaction if not removing
+            if (!isRemoving) {
+                newCounts[reactionType] = (newCounts[reactionType] || 0) + 1;
+            }
+            
+            return { ...q, user_reaction: newReaction, reactions: newCounts };
+        }));
+
+        try {
+            await fetch(`/api/questions/${questionId}/react`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: user.username,
+                    reaction_type: reactionType
+                })
+            });
+            // fetchQuestions(); // Eventually consistent via polling, or uncomment to sync immediately
+        } catch (err) {
+            console.error("Reaction failed", err);
+            fetchQuestions(); // Revert on error
         }
     };
 
@@ -115,24 +167,51 @@ export default function ForumFeed({ role, user }: Props) {
                         まだ質問はありません。最初の質問を投稿してみよう！
                     </div>
                 )}
-                {questions.map(q => (
-                    <div key={q.id} className="p-4 rounded-lg bg-slate-800 border border-slate-700 hover:border-indigo-500 transition-colors">
-                        <div className="flex justify-between text-sm text-slate-400 mb-2">
-                            <span>{q.author}</span>
-                            <div className="flex gap-2">
-                                {Array.isArray(q.tags) && q.tags.map((tag, i) => (
-                                    <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
-                                ))}
+                {questions.map(q => {
+                    const isMyQuestion = user?.username === q.author;
+                    return (
+                        <div key={q.id} className={`p-4 rounded-lg bg-slate-800 border transition-colors ${
+                            isMyQuestion ? 'border-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-700 hover:border-indigo-500'
+                        }`}>
+                            <div className="flex justify-between text-sm text-slate-400 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <span>{q.author}</span>
+                                    {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
+                                </div>
+                                <div className="flex gap-2">
+                                    {Array.isArray(q.tags) && q.tags.map((tag, i) => (
+                                        <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                        <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
-                        <div className="flex gap-4 text-sm">
-                            <button className="text-slate-400 hover:text-white">❤️ {q.likes || 0}</button>
-                            <button className="text-slate-400 hover:text-white">💬 コメント</button>
-                            {role === 'lecturer' && <button className="text-red-400 hover:text-red-300">削除</button>}
+                            <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
+                        
+                        {/* Reaction Bar */}
+                        <div className="flex gap-2 flex-wrap border-t border-slate-700 pt-3">
+                            {REACTION_TYPES.map(r => {
+                                const count = q.reactions?.[r.type] || 0;
+                                const isActive = q.user_reaction === r.type;
+                                return (
+                                    <button 
+                                        key={r.type}
+                                        onClick={() => handleReaction(q.id, r.type)}
+                                        className={`flex items-center justify-center gap-2 px-2 py-1 rounded-full transition-all w-20 ${
+                                            isActive 
+                                                ? 'bg-indigo-600 text-white' 
+                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                        }`}
+                                    >
+                                        <span className="text-lg">{r.icon}</span>
+                                        <span className={`text-sm ${count > 0 ? 'font-bold' : ''}`}>{count}</span>
+                                    </button>
+                                );
+                            })}
+                            
+                            <button className="ml-auto text-sm text-slate-400 hover:text-white">💬 コメント</button>
+                            {role === 'lecturer' && <button className="text-red-400 text-sm hover:text-red-300 ml-2">削除</button>}
                         </div>
                     </div>
-                ))}
+                ); })}
             </div>
         </div>
     );
