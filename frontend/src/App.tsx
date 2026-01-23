@@ -1,20 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import ForumFeed from './components/ForumFeed';
 import AIChatWindow from './components/AIChatWindow';
+import LoginModal from './components/LoginModal';
 
 type Role = 'student' | 'lecturer';
 type View = 'forum' | 'chat' | 'monitoring';
 
+interface User {
+  id: number;
+  username: string;
+}
+
 function App() {
   const [role, setRole] = useState<Role>('student');
   const [view, setView] = useState<View>('forum');
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('chat_app_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLogin = (loggedInUser: User) => {
+    setUser(loggedInUser);
+    localStorage.setItem('chat_app_user', JSON.stringify(loggedInUser));
+  };
 
   const handleRoleChange = (newRole: Role) => {
     setRole(newRole);
     // Reset view based on role default
     setView(newRole === 'student' ? 'forum' : 'monitoring');
   };
+
+  if (!user) {
+    return <LoginModal onLogin={handleLogin} />;
+  }
 
   return (
     <div className="flex-col h-full bg-slate-900 text-white">
@@ -52,7 +75,7 @@ function App() {
 
         <div className="flex items-center gap-4">
           <div className="text-xs text-slate-400">
-            現在のモード: <span className="font-bold text-white uppercase">{role === 'student' ? '学生' : '講師'}</span>
+             {user.username} さん | 現在のモード: <span className="font-bold text-white uppercase">{role === 'student' ? '学生' : '講師'}</span>
           </div>
           <button
             onClick={() => handleRoleChange(role === 'student' ? 'lecturer' : 'student')}
@@ -60,13 +83,22 @@ function App() {
           >
             {role === 'student' ? '講師モードへ切替' : '学生モードへ切替'}
           </button>
+          <button
+            onClick={() => {
+                localStorage.removeItem('chat_app_user');
+                setUser(null);
+            }}
+            style={{ fontSize: '0.8rem', padding: '4px 8px', background: '#475569' }}
+          >
+            ログアウト
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4">
-        {view === 'forum' && <ForumFeed role={role} />}
-        {view === 'chat' && role === 'student' && <AIChatWindow />}
+        {view === 'forum' && <ForumFeed role={role} user={user} />}
+        {view === 'chat' && role === 'student' && <AIChatWindow user={user} />}
         {view === 'monitoring' && role === 'lecturer' && (
           <LecturerInsightBoard />
         )}

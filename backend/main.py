@@ -1,54 +1,42 @@
 import os
 from google import genai
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+import models, database
 
 load_dotenv()
 
 # Configure Gemini
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-MODEL_NAME = 'gemini-2.5-flash' # Using a modern model compatible with the new SDK
+MODEL_NAME = 'gemini-2.5-flash'
+
+# Initialize DB
+models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
 
-# CORS config for frontend access
+# CORS config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for prototype
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mock Database
-class MockDB:
-    def __init__(self):
-        self.chat_histories = {} # {session_id: [messages]}
-        
-    def add_message(self, session_id: str, role: str, content: str):
-        if session_id not in self.chat_histories:
-            self.chat_histories[session_id] = []
-        # google.genai uses 'user' and 'model' (or 'assistant'), but types are strictly typed in some versions.
-        # For simplicity in storage we keep string.
-        parsed_role = "user" if role == "user" else "model"
-        self.chat_histories[session_id].append({"role": parsed_role, "parts": [{"text": content}]})
-    
-    def get_history(self, session_id: str):
-        return self.chat_histories.get(session_id, [])
+# Dependency
+def get_db():
+    db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-    def get_all_logs_as_text(self):
-        text = ""
-        for session_id, history in self.chat_histories.items():
-            text += f"--- Session {session_id} ---\n"
-            for msg in history:
-                text += f"{msg['role']}: {msg['parts'][0]['text']}\n"
-        return text
-
-db = MockDB()
-
+# Pydantic Models
 class ChatRequest(BaseModel):
     session_id: str
     message: str
@@ -56,39 +44,92 @@ class ChatRequest(BaseModel):
 class InsightRequest(BaseModel):
     query: str
 
-class Question(BaseModel):
+class QuestionCreate(BaseModel):
+    author: str
     content: str
     tags: list[str] = []
 
+class UserLogin(BaseModel):
+    username: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    
+    class Config:
+        from_attributes = True
+
+class QuestionResponse(BaseModel):
+    id: int
+    author: str
+    content: str
+    tags: list[str]
+    likes: int
+    
+    class Config:
+        from_attributes = True
+
 @app.get("/")
 def read_root():
-    return {"Hello": "World", "Service": "Question Chat App"}
+    return {"Hello": "World", "Service": "Question Chat App (Persistent)"}
+
+@app.post("/login", response_model=UserResponse)
+def login(login_req: UserLogin, db: Session = Depends(get_db)):
+    username = login_req.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+        
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        user = models.User(username=username)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+@app.get("/chat/history")
+def get_chat_history(session_id: str, db: Session = Depends(get_db)):
+    return db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id).all()
 
 @app.post("/chat")
-async def chat_with_ai(request: ChatRequest):
+async def chat_with_ai(request: ChatRequest, db: Session = Depends(get_db)):
     if client is None:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
-    # Determine context (placeholder for now)
-    # In real app, this would query relevant public threads too
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY not set")
+
+    session_id = request.session_id
     
-    # 1. Add user message to history
-    db.add_message(request.session_id, "user", request.message)
+    # Check if session exists, create if not
+    db_session = db.query(models.ChatSession).filter(models.ChatSession.session_id == session_id).first()
+    if not db_session:
+        db_session = models.ChatSession(session_id=session_id, role="student") # Default to student for now since UI generates ID
+        db.add(db_session)
+        db.commit()
+
+    # 1. Save User Message
+    user_msg = models.ChatMessage(session_id=session_id, role="user", content=request.message)
+    db.add(user_msg)
+    db.commit()
+
+    # 2. Retrieve History
+    # Limit history to last 10 turns? Or full history. Let's do last 20 messages.
+    history_msgs = db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id).all()
     
-    # 2. Get history for API
-    history = db.get_history(request.session_id)
-    
+    # Format for Gemini
+    # construct history for API (excluding the one we just added to send as 'message'?)
+    # genai SDK usually takes history as list of contents.
+    gemini_history = []
+    # We need to pass previous messages
+    for msg in history_msgs[:-1]:
+        gemini_history.append({"role": "user" if msg.role == "user" else "model", "parts": [{"text": msg.content}]})
+
     try:
-        current_msg = history[-1]['parts'][0]['text']
-        past_history = history[:-1]
+        chat = client.chats.create(model=MODEL_NAME, history=gemini_history)
+        response = chat.send_message(request.message)
         
-        # Use simple generate_content for debugging first if chat fails, 
-        # but let's try to stick to chat with explicit error catching
-        chat = client.chats.create(model=MODEL_NAME, history=past_history)
-        
-        response = chat.send_message(current_msg)
-        
-        # 3. Add model response to history
-        db.add_message(request.session_id, "model", response.text)
+        # 3. Save Model Response
+        model_msg = models.ChatMessage(session_id=session_id, role="model", content=response.text)
+        db.add(model_msg)
+        db.commit()
         
         return {"response": response.text}
     except Exception as e:
@@ -97,28 +138,36 @@ async def chat_with_ai(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/lecturer/insight")
-async def get_lecturer_insight(request: InsightRequest):
+async def get_lecturer_insight(request: InsightRequest, db: Session = Depends(get_db)):
     if client is None:
-        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
-    # 1. Aggregate all student logs (Raw text) - HIDDEN from Lecturer, seen by AI
-    all_logs = db.get_all_logs_as_text()
-    
-    if not all_logs:
-        return {"response": "分析対象となる学生のチャット履歴がまだありません。"}
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY not set")
 
-    # 2. Construct Prompt
+    # Aggregate logs
+    all_msgs = db.query(models.ChatMessage).order_by(models.ChatMessage.session_id, models.ChatMessage.id).all()
+    
+    if not all_msgs:
+         return {"response": "No chat logs available."}
+
+    text_logs = ""
+    current_session = ""
+    for msg in all_msgs:
+        if msg.session_id != current_session:
+            text_logs += f"\n--- Session {msg.session_id} ---\n"
+            current_session = msg.session_id
+        text_logs += f"{msg.role}: {msg.content}\n"
+
     prompt = f"""
-    あなたは大学の講師のアシスタントです。
-    講師は、学生が「プライベートAIチャット」でどのような質問をしているかを元に、学生がつまずいている点を知りたいと考えています。
+    You are a university lecturer's assistant.
+    Analyze the following anonymized student chat logs to find what they are struggling with.
     
-    【プライバシー絶対厳守】: 特定のメッセージを引用したり、学生個人を特定するような情報は絶対に出力しないでください（セッションIDが見えていても無視してください）。
-    「傾向」や「よくある混乱ポイント」を要約し、講師が授業で再度解説すべき点を提案してください。
-    回答は日本語で行ってください。
+    [PRIVACY]: Do NOT quote specific messages or ID.
+    Summarize trends and confusion points.
+    Answer in Japanese.
     
-    講師からの質問: {request.query}
+    Lecturer Query: {request.query}
     
-    --- 匿名化された学生チャットログ ---
-    {all_logs}
+    --- Logs ---
+    {text_logs}
     """
     
     try:
@@ -130,9 +179,21 @@ async def get_lecturer_insight(request: InsightRequest):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"ERROR in /lecturer/insight: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/questions")
-def get_questions():
-    return [{"id": 1, "content": "Sample Question", "tags": ["test"]}]
+# Forum Endpoints
+@app.get("/questions", response_model=list[QuestionResponse])
+def get_questions(db: Session = Depends(get_db)):
+    return db.query(models.Question).order_by(models.Question.created_at.desc()).all()
+
+@app.post("/questions", response_model=QuestionResponse)
+def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
+    db_question = models.Question(
+        author=question.author,
+        content=question.content,
+        tags=question.tags
+    )
+    db.add(db_question)
+    db.commit()
+    db.refresh(db_question)
+    return db_question

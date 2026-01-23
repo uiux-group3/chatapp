@@ -1,12 +1,20 @@
 .git
 .gitignore
 .DS_Store
+.vscode
+.idea
+README.md
 
+# Backend
 backend/venv
 backend/__pycache__
 backend/.env
+backend/*.db
+backend/*.sqlite3
+backend/test_internal.py
+*.log
 
+# Frontend
 frontend/node_modules
 frontend/dist
 frontend/.env
-

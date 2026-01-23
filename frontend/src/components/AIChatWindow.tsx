@@ -1,11 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const SESSION_ID = 'student-' + Math.random().toString(36).substr(2, 9); // Simple random session ID for prototype
+interface User {
+    id: number;
+    username: string;
+}
 
-export default function AIChatWindow() {
+interface Props {
+    user?: User | null;
+}
+
+export default function AIChatWindow({ user }: Props) {
     const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Persistent session ID based on user ID, or random if not logged in (though App.tsx enforces login now)
+    const sessionId = user ? `student-${user.id}` : 'guest-' + Math.random().toString(36).substr(2, 9);
+
+    useEffect(() => {
+        if (!user) return;
+        // Fetch history on mount
+        fetch(`/api/chat/history?session_id=${sessionId}`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => {
+                 if (Array.isArray(data)) {
+                     setMessages(data.map((msg: any) => ({
+                         role: msg.role === 'model' ? 'model' : 'user', 
+                         content: msg.content
+                     })));
+                 }
+            })
+            .catch(err => console.error("Failed to load history", err));
+    }, [sessionId]);
 
     const sendMessage = async () => {
         if (!input.trim() || loading) return;
@@ -19,7 +45,7 @@ export default function AIChatWindow() {
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: SESSION_ID, message: userMsg }),
+                body: JSON.stringify({ session_id: sessionId, message: userMsg }),
             });
             const data = await res.json().catch(() => ({} as any));
             if (!res.ok) {
