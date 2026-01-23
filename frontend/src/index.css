@@ -90,6 +90,7 @@ textarea:focus {
 /* Layout Utilities */
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
 .flex-wrap { flex-wrap: wrap; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
@@ -109,6 +110,12 @@ textarea:focus {
 .mb-4 { margin-bottom: 1rem; }
 .rounded { border-radius: 0.25rem; }
 .rounded-lg { border-radius: 0.5rem; }
+.rounded-tl-lg { border-top-left-radius: 0.5rem; }
+.rounded-tl-none { border-top-left-radius: 0; }
+.rounded-tr-lg { border-top-right-radius: 0.5rem; }
+.rounded-tr-none { border-top-right-radius: 0; }
+.rounded-b-none { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.rounded-t-none { border-top-left-radius: 0; border-top-right-radius: 0; }
 .rounded-full { border-radius: 9999px; }
 .h-full { height: 100%; }
 .w-full { width: 100%; }
@@ -183,6 +190,10 @@ textarea:focus {
 .hover\:bg-slate-600:hover {
   background-color: #cbd5e1; /* Slate 300 */
 }
+.hover\:bg-emerald-600:hover {
+  background-color: #059669; /* Emerald 600 */
+  color: white;
+}
 
 /* Transitions */
 .transition-colors {
@@ -218,6 +229,15 @@ textarea:focus {
 /* Extended Utilities for New Button */
 .border-2 {
   border-width: 2px;
+}
+.border-none {
+  border: none !important;
+}
+.cursor-default {
+  cursor: default;
+}
+.pointer-events-none {
+  pointer-events: none;
 }
 .border-dashed {
   border-style: dashed;

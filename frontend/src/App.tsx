@@ -50,28 +50,7 @@ function App() {
             Q-Chat
           </h1>
           <div className="flex gap-2 text-sm">
-            <button
-              className={view === 'forum' ? 'primary' : ''}
-              onClick={() => setView('forum')}
-            >
-              掲示板で質問する
-            </button>
-            {role === 'student' && (
-              <button
-                className={view === 'chat' ? 'primary' : ''}
-                onClick={() => setView('chat')}
-              >
-                AIに相談する
-              </button>
-            )}
-            {role === 'lecturer' && (
-              <button
-                className={view === 'monitoring' ? 'primary' : ''}
-                onClick={() => setView('monitoring')}
-              >
-                Class AI
-              </button>
-            )}
+             {/* Navigation moved to Tabs */}
           </div>
         </div>
 
@@ -103,8 +82,46 @@ function App() {
         </div>
       </header>
 
+      {/* Tab Navigation */}
+      <div className="flex mx-4 mb-0">
+        <button
+          className={`flex-1 py-3 px-6 rounded-tl-lg rounded-tr-none rounded-b-none font-bold text-sm transition-all border-none ${
+            view === 'forum'
+              ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+              : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+          }`}
+          onClick={() => view !== 'forum' && setView('forum')}
+        >
+          掲示板で質問する
+        </button>
+        {role === 'student' && (
+          <button
+            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${
+              view === 'chat'
+                ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+                : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+            }`}
+            onClick={() => view !== 'chat' && setView('chat')}
+          >
+            AIに相談する
+          </button>
+        )}
+        {role === 'lecturer' && (
+          <button
+            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${
+              view === 'monitoring'
+                ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+                : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+            }`}
+            onClick={() => view !== 'monitoring' && setView('monitoring')}
+          >
+            Class AI (分析)
+          </button>
+        )}
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4">
+      <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4 rounded-t-none">
         {view === 'forum' && <ForumFeed role={role} user={user} />}
         {view === 'chat' && role === 'student' && <AIChatWindow user={user} />}
         {view === 'monitoring' && role === 'lecturer' && (

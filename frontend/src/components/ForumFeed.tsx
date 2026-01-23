@@ -143,7 +143,7 @@ export default function ForumFeed({ role, user }: Props) {
                 <div className="bg-slate-800 p-4 rounded-lg mb-4 border border-indigo-500/50">
                     <textarea
                         className="w-full bg-slate-900 border border-slate-700 rounded p-2 mb-2 text-white"
-                        placeholder="質問内容を入力してね（例: 変数宣言の違いがわかりません）"
+                        placeholder="質問内容を入力してね（例: 「変数宣言の違いがわかりません」、一行でもOK：『〜って何から始めればいい？』"
                         rows={3}
                         value={inputContent}
                         onChange={e => setInputContent(e.target.value)}
