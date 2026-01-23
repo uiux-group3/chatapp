@@ -50,7 +50,7 @@ function App() {
             Q-Chat
           </h1>
           <div className="flex gap-2 text-sm">
-             {/* Navigation moved to Tabs */}
+            {/* Navigation moved to Tabs */}
           </div>
         </div>
 
@@ -85,22 +85,20 @@ function App() {
       {/* Tab Navigation */}
       <div className="flex mx-4 mb-0">
         <button
-          className={`flex-1 py-3 px-6 rounded-tl-lg rounded-tr-none rounded-b-none font-bold text-sm transition-all border-none ${
-            view === 'forum'
-              ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
-              : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
-          }`}
+          className={`flex-1 py-3 px-6 rounded-tl-lg rounded-tr-none rounded-b-none font-bold text-sm transition-all border-none ${view === 'forum'
+            ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+            : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+            }`}
           onClick={() => view !== 'forum' && setView('forum')}
         >
           掲示板で質問する
         </button>
         {role === 'student' && (
           <button
-            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${
-              view === 'chat'
-                ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
-                : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
-            }`}
+            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${view === 'chat'
+              ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+              : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+              }`}
             onClick={() => view !== 'chat' && setView('chat')}
           >
             AIに相談する
@@ -108,11 +106,10 @@ function App() {
         )}
         {role === 'lecturer' && (
           <button
-            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${
-              view === 'monitoring'
-                ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
-                : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
-            }`}
+            className={`flex-1 py-3 px-6 rounded-tr-lg rounded-tl-none rounded-b-none font-bold text-sm transition-all border-none ${view === 'monitoring'
+              ? 'bg-indigo-600 text-white shadow-sm z-10 cursor-default pointer-events-none'
+              : 'bg-slate-700 text-slate-500 hover:bg-emerald-600 hover:text-white opacity-80'
+              }`}
             onClick={() => view !== 'monitoring' && setView('monitoring')}
           >
             Class AI (分析)
@@ -133,7 +130,7 @@ function App() {
 }
 
 function LecturerInsightBoard({ user }: { user: User }) {
-  const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string, timestamp?: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -148,19 +145,26 @@ function LecturerInsightBoard({ user }: { user: User }) {
         if (Array.isArray(data)) {
           setMessages(data.map((msg: any) => ({
             role: msg.role === 'model' ? 'model' : 'user',
-            content: msg.content
+            content: msg.content,
+            timestamp: msg.timestamp
           })));
         }
       })
       .catch(err => console.error("Failed to load history", err));
   }, [sessionId]);
 
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  };
+
   const askInsight = async () => {
     if (!input.trim() || loading) return;
 
     const userMsg = input;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setMessages(prev => [...prev, { role: 'user', content: userMsg, timestamp: new Date().toISOString() }]);
     setLoading(true);
 
     try {
@@ -173,10 +177,10 @@ function LecturerInsightBoard({ user }: { user: User }) {
       if (!res.ok) {
         throw new Error(data?.detail || `HTTP ${res.status}`);
       }
-      setMessages(prev => [...prev, { role: 'model', content: data.response ?? '' }]);
+      setMessages(prev => [...prev, { role: 'model', content: data.response ?? '', timestamp: new Date().toISOString() }]);
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'model', content: 'エラー: インサイトを取得できませんでした。' }]);
+      setMessages(prev => [...prev, { role: 'model', content: 'エラー: インサイトを取得できませんでした。', timestamp: new Date().toISOString() }]);
     } finally {
       setLoading(false);
     }
@@ -189,7 +193,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
         <span className="text-xs text-slate-500">チャット形式で深掘り分析ができます</span>
       </div>
 
-      <div className="flex-1 bg-slate-800 rounded-lg p-4 border border-slate-700 overflow-y-auto flex flex-col gap-4">
+      <div className="flex-1 bg-slate-800 rounded-lg p-4 border border-slate-700 overflow-y-auto flex flex-col gap-8">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-slate-500">
             <p>学生のチャットログと掲示板を分析します。</p>
@@ -197,11 +201,23 @@ function LecturerInsightBoard({ user }: { user: User }) {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`p-4 rounded-lg max-w-[90%] w-fit shadow-sm ${m.role === 'user' ? 'bg-indigo-900/50 self-end ml-auto border border-indigo-500/30' : 'bg-slate-700/50 self-start border border-slate-600'}`}>
-            <div className="text-xs text-slate-400 mb-1 font-bold">{m.role === 'model' ? 'Class AI' : '講師'}</div>
-            <div className="text-sm leading-relaxed markdown-body">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+          <div key={i} className={`flex w-full items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {m.role === 'user' && (
+              <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
+            )}
+            <div className={`p-3-5 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-900/50 border border-indigo-500/30' : 'bg-slate-700/50 border border-slate-600'}`}>
+              <div className="text-xs text-slate-400 mb-1 font-bold">{m.role === 'model' ? 'Class AI' : '講師'}</div>
+              <div className="text-sm leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                  p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                  pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
+                  code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
+                }}>{m.content}</ReactMarkdown>
+              </div>
             </div>
+            {m.role === 'model' && (
+              <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
+            )}
           </div>
         ))}
         {loading && <div className="text-slate-500 text-sm animate-pulse ml-2">分析中...</div>}

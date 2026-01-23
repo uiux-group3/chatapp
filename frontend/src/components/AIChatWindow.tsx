@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AIChatWindow({ user }: Props) {
-    const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
+    const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string, timestamp?: string }[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -28,19 +28,26 @@ export default function AIChatWindow({ user }: Props) {
                 if (Array.isArray(data)) {
                     setMessages(data.map((msg: any) => ({
                         role: msg.role === 'model' ? 'model' : 'user',
-                        content: msg.content
+                        content: msg.content,
+                        timestamp: msg.timestamp
                     })));
                 }
             })
             .catch(err => console.error("Failed to load history", err));
     }, [sessionId]);
 
+    const formatTime = (isoString?: string) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    };
+
     const sendMessage = async () => {
         if (!input.trim() || loading) return;
 
         const userMsg = input;
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setMessages(prev => [...prev, { role: 'user', content: userMsg, timestamp: new Date().toISOString() }]);
         setLoading(true);
 
         try {
@@ -53,10 +60,10 @@ export default function AIChatWindow({ user }: Props) {
             if (!res.ok) {
                 throw new Error(data?.detail || `HTTP ${res.status}`);
             }
-            setMessages(prev => [...prev, { role: 'model', content: data.response ?? '' }]);
+            setMessages(prev => [...prev, { role: 'model', content: data.response ?? '', timestamp: new Date().toISOString() }]);
         } catch (error) {
             console.error(error);
-            setMessages(prev => [...prev, { role: 'model', content: 'エラー: AIに接続できませんでした。' }]);
+            setMessages(prev => [...prev, { role: 'model', content: 'エラー: AIに接続できませんでした。', timestamp: new Date().toISOString() }]);
         } finally {
             setLoading(false);
         }
@@ -66,10 +73,10 @@ export default function AIChatWindow({ user }: Props) {
         <div className="h-full flex flex-col">
             <div className="mb-4 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <h2 className="font-bold text-lg">マイAIバディ (プライベート)</h2>
+                <h2 className="font-bold text-lg">AIメンター</h2>
             </div>
 
-            <div className="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700 overflow-y-auto flex flex-col gap-3">
+            <div className="flex-1 bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700 overflow-y-auto flex flex-col gap-8">
                 {messages.length === 0 && (
                     <div className="text-center text-slate-500 mt-10">
                         <p>講義についてなんでも聞いてみよう。</p>
@@ -77,13 +84,25 @@ export default function AIChatWindow({ user }: Props) {
                     </div>
                 )}
                 {messages.map((m, i) => (
-                    <div key={i} className={`p-4 rounded-lg max-w-[85%] w-fit shadow-sm ${m.role === 'user' ? 'bg-indigo-600 self-end ml-auto text-white' : 'bg-slate-700 self-start text-slate-100'}`}>
-                        <div className="text-xs opacity-70 mb-1 uppercase flex items-center gap-1">
-                            {m.role === 'model' ? <span>🤖 AI Tutor</span> : <span>👤 あなた</span>}
+                    <div key={i} className={`flex w-full items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {m.role === 'user' && (
+                            <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
+                        )}
+                        <div className={`p-3-5 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
+                            <div className="text-xs opacity-70 mb-1 uppercase flex items-center gap-1">
+                                {m.role === 'model' ? <span>AI Tutor</span> : <span>👤 あなた</span>}
+                            </div>
+                            <div className="text-sm leading-relaxed">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                                    p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                    pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
+                                    code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
+                                }}>{m.content}</ReactMarkdown>
+                            </div>
                         </div>
-                        <div className="text-sm leading-relaxed markdown-body">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                        </div>
+                        {m.role === 'model' && (
+                            <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
+                        )}
                     </div>
                 ))}
                 {loading && <div className="text-slate-500 text-sm animate-pulse">AIが入力中...</div>}
