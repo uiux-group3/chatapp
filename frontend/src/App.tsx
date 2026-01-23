@@ -212,8 +212,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
             {m.role === 'user' && (
               <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
             )}
-            <div className={`p-3-5 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-900/50 border border-indigo-500/30' : 'bg-slate-700/50 border border-slate-600'}`}>
-              <div className="text-xs text-slate-400 mb-1 font-bold">{m.role === 'model' ? 'Class AI' : '講師'}</div>
+            <div className={`px-2 py-0 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-900/50 border border-indigo-500/30' : 'bg-slate-700/50 border border-slate-600'}`}>
               <div className="text-sm leading-relaxed">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
                   p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
