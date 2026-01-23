@@ -18,9 +18,40 @@
 ## セットアップ手順
 
 ### 前提条件
--   Node.js (v18+)
+-   Node.js (v20.19+ または v22.12+)
 -   Python (3.12+)
 -   Google Gemini API Key
+
+## Docker (Compose) で起動する方法
+
+前提: Docker / Docker Compose が利用できること
+
+1) 環境変数を用意（未作成の場合）
+```bash
+cp backend/.env_sample backend/.env
+```
+`backend/.env` の `GEMINI_API_KEY` を設定してください。
+
+2) 起動
+```bash
+docker compose up --build
+```
+
+- フロント→バックエンド通信は、開発時は Vite のプロキシで `/api/*` をバックエンドへ転送しています。
+
+- もし過去に `frontend_node_modules` ボリュームを作成済みで、フロントが起動しない場合は一度ボリュームを消して再作成してください:
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+- フロントエンド: `http://localhost:5173`
+- バックエンド: `http://localhost:8000`
+
+停止:
+```bash
+docker compose down
+```
 
 ### 1. リポジトリのクローン
 ```bash

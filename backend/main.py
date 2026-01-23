@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -8,8 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 # Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.5-flash')
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+MODEL_NAME = 'gemini-2.5-flash' # Using a modern model compatible with the new SDK
 
 app = FastAPI()
 
@@ -30,8 +31,10 @@ class MockDB:
     def add_message(self, session_id: str, role: str, content: str):
         if session_id not in self.chat_histories:
             self.chat_histories[session_id] = []
+        # google.genai uses 'user' and 'model' (or 'assistant'), but types are strictly typed in some versions.
+        # For simplicity in storage we keep string.
         parsed_role = "user" if role == "user" else "model"
-        self.chat_histories[session_id].append({"role": parsed_role, "parts": [content]})
+        self.chat_histories[session_id].append({"role": parsed_role, "parts": [{"text": content}]})
     
     def get_history(self, session_id: str):
         return self.chat_histories.get(session_id, [])
@@ -41,7 +44,7 @@ class MockDB:
         for session_id, history in self.chat_histories.items():
             text += f"--- Session {session_id} ---\n"
             for msg in history:
-                text += f"{msg['role']}: {msg['parts'][0]}\n"
+                text += f"{msg['role']}: {msg['parts'][0]['text']}\n"
         return text
 
 db = MockDB()
@@ -63,6 +66,8 @@ def read_root():
 
 @app.post("/chat")
 async def chat_with_ai(request: ChatRequest):
+    if client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
     # Determine context (placeholder for now)
     # In real app, this would query relevant public threads too
     
@@ -73,19 +78,28 @@ async def chat_with_ai(request: ChatRequest):
     history = db.get_history(request.session_id)
     
     try:
-        # Create chat session with history
-        chat = model.start_chat(history=history[:-1]) # history minus current message
-        response = chat.send_message(request.message)
+        current_msg = history[-1]['parts'][0]['text']
+        past_history = history[:-1]
+        
+        # Use simple generate_content for debugging first if chat fails, 
+        # but let's try to stick to chat with explicit error catching
+        chat = client.chats.create(model=MODEL_NAME, history=past_history)
+        
+        response = chat.send_message(current_msg)
         
         # 3. Add model response to history
         db.add_message(request.session_id, "model", response.text)
         
         return {"response": response.text}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/lecturer/insight")
 async def get_lecturer_insight(request: InsightRequest):
+    if client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
     # 1. Aggregate all student logs (Raw text) - HIDDEN from Lecturer, seen by AI
     all_logs = db.get_all_logs_as_text()
     
@@ -108,12 +122,15 @@ async def get_lecturer_insight(request: InsightRequest):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt
+        )
         return {"response": response.text}
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"ERROR in /chat: {e}")
+        print(f"ERROR in /lecturer/insight: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/questions")
