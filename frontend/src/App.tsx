@@ -80,23 +80,26 @@ function LecturerInsightBoard() {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const askInsight = async () => {
-    if (!query.trim() || loading) return;
-    setLoading(true);
-    try {
-      const res = await fetch('http://localhost:8000/lecturer/insight', {
+    const askInsight = async () => {
+      if (!query.trim() || loading) return;
+      setLoading(true);
+      try {
+      const res = await fetch('/api/lecturer/insight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       });
-      const data = await res.json();
-      setReport(data.response);
-    } catch (err) {
-      console.error(err);
-      setReport('エラー: インサイトを取得できませんでした。');
-    } finally {
-      setLoading(false);
-    }
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
+      setReport(data.response ?? '');
+      } catch (err) {
+        console.error(err);
+        setReport('エラー: インサイトを取得できませんでした。');
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (

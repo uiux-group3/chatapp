@@ -16,13 +16,16 @@ export default function AIChatWindow() {
         setLoading(true);
 
         try {
-            const res = await fetch('http://localhost:8000/chat', {
+            const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ session_id: SESSION_ID, message: userMsg }),
             });
-            const data = await res.json();
-            setMessages(prev => [...prev, { role: 'model', content: data.response }]);
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok) {
+                throw new Error(data?.detail || `HTTP ${res.status}`);
+            }
+            setMessages(prev => [...prev, { role: 'model', content: data.response ?? '' }]);
         } catch (error) {
             console.error(error);
             setMessages(prev => [...prev, { role: 'model', content: 'エラー: AIに接続できませんでした。' }]);
