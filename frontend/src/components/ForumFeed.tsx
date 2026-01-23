@@ -132,6 +132,36 @@ export default function ForumFeed({ role, user }: Props) {
         }
     };
 
+    const deleteQuestion = async (questionId: number) => {
+        if (!user) return;
+
+        const target = questions.find(q => q.id === questionId);
+        if (!target) return;
+
+        if (target.author !== user.username) {
+            alert("自分の投稿のみ削除できます");
+            return;
+        }
+
+        if (!confirm("この投稿を削除しますか？")) return;
+
+        setActiveReactionMenu(null);
+        setQuestions(prev => prev.filter(q => q.id !== questionId));
+        try {
+            const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok) {
+                throw new Error(data?.detail || `HTTP ${res.status}`);
+            }
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("削除に失敗しました");
+            fetchQuestions();
+        }
+    };
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
@@ -155,7 +185,7 @@ export default function ForumFeed({ role, user }: Props) {
                         onChange={e => setInputTags(e.target.value)}
                     />
                     <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-400">投稿後も修正・削除できるので安心してください</span>
+                        <span className="text-xs text-slate-400">投稿後も削除できるので安心してください</span>
                         <div className="flex items-center gap-2">
                             <button className="text-slate-400 text-sm" onClick={() => setShowForm(false)}>キャンセル</button>
                             <button className="primary text-sm" onClick={submitQuestion} disabled={loading}>
@@ -199,10 +229,21 @@ export default function ForumFeed({ role, user }: Props) {
                                     <span className="font-medium">{q.author}</span>
                                     {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
                                 </div>
-                                <div className="flex gap-2">
-                                    {Array.isArray(q.tags) && q.tags.map((tag, i) => (
-                                        <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
-                                    ))}
+                                <div className="flex items-center gap-2">
+                                    <div className="flex gap-2 flex-wrap justify-end">
+                                        {Array.isArray(q.tags) && q.tags.map((tag, i) => (
+                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
+                                        ))}
+                                    </div>
+                                    {isMyQuestion && (
+                                        <button
+                                            className="text-red-400 text-xs hover:text-red-300"
+                                            onClick={() => deleteQuestion(q.id)}
+                                            title="削除"
+                                        >
+                                            削除
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
@@ -260,7 +301,6 @@ export default function ForumFeed({ role, user }: Props) {
                                 </div>
 
                                 <button className="ml-auto text-sm text-slate-400 hover:text-white">💬 コメントする</button>
-                                {role === 'lecturer' && <button className="text-red-400 text-sm hover:text-red-300 ml-2">削除</button>}
                             </div>
                         </div>
                     );

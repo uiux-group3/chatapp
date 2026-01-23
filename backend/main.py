@@ -357,6 +357,24 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
         "user_reaction": None
     }
 
+@app.delete("/questions/{question_id}")
+def delete_question(question_id: int, username: str, db: Session = Depends(get_db)):
+    username = username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    if q.author != username:
+        raise HTTPException(status_code=403, detail="You can only delete your own posts")
+
+    db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == question_id).delete(synchronize_session=False)
+    db.delete(q)
+    db.commit()
+    return {"status": "deleted"}
+
 @app.post("/questions/{question_id}/react")
 def react_to_question(question_id: int, req: ReactionRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == req.username).first()
