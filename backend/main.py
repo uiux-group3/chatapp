@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 # Configure Gemini
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 MODEL_NAME = 'gemini-2.5-flash' # Using a modern model compatible with the new SDK
 
 app = FastAPI()
@@ -65,6 +66,8 @@ def read_root():
 
 @app.post("/chat")
 async def chat_with_ai(request: ChatRequest):
+    if client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
     # Determine context (placeholder for now)
     # In real app, this would query relevant public threads too
     
@@ -95,6 +98,8 @@ async def chat_with_ai(request: ChatRequest):
 
 @app.post("/lecturer/insight")
 async def get_lecturer_insight(request: InsightRequest):
+    if client is None:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY が未設定です。backend/.env を確認してください。")
     # 1. Aggregate all student logs (Raw text) - HIDDEN from Lecturer, seen by AI
     all_logs = db.get_all_logs_as_text()
     
