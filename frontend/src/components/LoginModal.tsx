@@ -53,7 +53,6 @@ export default function LoginModal({ onLogin }: Props) {
                         placeholder="例: たろう"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleLogin()}
                         autoFocus
                     />
                     {error && <p className="login-modal-error">{error}</p>}

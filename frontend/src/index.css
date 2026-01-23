@@ -49,10 +49,10 @@ body {
 }
 
 .login-modal-overlay {
-  background: rgba(0, 0, 0, 0.55);
+  background: transparent;
   padding: 16px;
   z-index: 50;
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
 }
 
 .login-modal-card {
