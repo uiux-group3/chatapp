@@ -42,6 +42,15 @@ export default function AIChatWindow({ user }: Props) {
         return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const formatMessage = (content: string) => {
+        // Fix inline bold formatting by ensuring spaces around **bold** blocks
+        // 1. Add space before ** if preceded by non-whitespace
+        let formatted = content.replace(/([^\s])(\*\*.*?\*\*)/g, '$1 $2');
+        // 2. Add space after ** if followed by non-whitespace
+        formatted = formatted.replace(/(\*\*.*?\*\*)([^\s])/g, '$1 $2');
+        return formatted;
+    };
+
     const sendMessage = async () => {
         if (!input.trim() || loading) return;
 
@@ -90,14 +99,14 @@ export default function AIChatWindow({ user }: Props) {
                         )}
                         <div className={`p-3-5 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
                             <div className="text-xs opacity-70 mb-1 uppercase flex items-center gap-1">
-                                {m.role === 'model' ? <span>AI Tutor</span> : <span>👤 あなた</span>}
+                                {m.role === 'model' ? <span>AI Tutor</span> : <span>あなた</span>}
                             </div>
                             <div className="text-sm leading-relaxed">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
                                     p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
                                     pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
                                     code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
-                                }}>{m.content}</ReactMarkdown>
+                                }}>{formatMessage(m.content)}</ReactMarkdown>
                             </div>
                         </div>
                         {m.role === 'model' && (

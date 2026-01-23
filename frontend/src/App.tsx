@@ -159,6 +159,13 @@ function LecturerInsightBoard({ user }: { user: User }) {
     return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatMessage = (content: string) => {
+    // Fix inline bold formatting by ensuring spaces around **bold** blocks
+    let formatted = content.replace(/([^\s])(\*\*.*?\*\*)/g, '$1 $2');
+    formatted = formatted.replace(/(\*\*.*?\*\*)([^\s])/g, '$1 $2');
+    return formatted;
+  };
+
   const askInsight = async () => {
     if (!input.trim() || loading) return;
 
@@ -212,7 +219,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
                   p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
                   pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
                   code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
-                }}>{m.content}</ReactMarkdown>
+                }}>{formatMessage(m.content)}</ReactMarkdown>
               </div>
             </div>
             {m.role === 'model' && (
