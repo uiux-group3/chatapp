@@ -237,12 +237,6 @@ function LecturerInsightBoard({ user }: { user: User }) {
           rows={2}
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              askInsight();
-            }
-          }}
         />
         <button className="primary self-end h-12 w-24 shrink-0 flex items-center justify-center font-bold" onClick={askInsight} disabled={loading}>
           {loading ? '...' : '送信'}

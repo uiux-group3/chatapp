@@ -1,4 +1,5 @@
 import os
+import datetime
 from google import genai
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
@@ -50,6 +51,11 @@ class QuestionCreate(BaseModel):
     content: str
     tags: list[str] = []
 
+class QuestionUpdate(BaseModel):
+    username: str
+    content: str
+    tags: list[str] | None = None
+
 class UserLogin(BaseModel):
     username: str
 
@@ -72,7 +78,28 @@ class QuestionResponse(BaseModel):
     likes: int # Keep for backward compat
     reactions: dict[str, int]
     user_reaction: str | None = None
+    comment_count: int = 0
     
+    class Config:
+        from_attributes = True
+
+class CommentCreate(BaseModel):
+    author: str
+    content: str
+
+class CommentUpdate(BaseModel):
+    username: str
+    content: str
+
+class CommentResponse(BaseModel):
+    id: int
+    question_id: int
+    author: str
+    content: str
+    created_at: datetime.datetime
+    reactions: dict[str, int]
+    user_reaction: str | None = None
+
     class Config:
         from_attributes = True
 
@@ -317,6 +344,7 @@ def get_questions(username: str | None = None, db: Session = Depends(get_db)):
         # Count reactions
         # This is N+1 query problem potential but fine for prototype scale
         reactions_query = db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == q.id).all()
+        comment_count = db.query(models.QuestionComment).filter(models.QuestionComment.question_id == q.id).count()
         
         reaction_counts = {}
         user_reaction = None
@@ -333,9 +361,43 @@ def get_questions(username: str | None = None, db: Session = Depends(get_db)):
             "tags": q.tags,
             "likes": q.likes,
             "reactions": reaction_counts,
-            "user_reaction": user_reaction
+            "user_reaction": user_reaction,
+            "comment_count": comment_count,
         })
     return result
+
+@app.get("/questions/{question_id}", response_model=QuestionResponse)
+def get_question(question_id: int, username: str | None = None, db: Session = Depends(get_db)):
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    user_id = None
+    if username:
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user:
+            user_id = user.id
+
+    reactions_query = db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == q.id).all()
+    comment_count = db.query(models.QuestionComment).filter(models.QuestionComment.question_id == q.id).count()
+
+    reaction_counts: dict[str, int] = {}
+    user_reaction: str | None = None
+    for r in reactions_query:
+        reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+        if user_id and r.user_id == user_id:
+            user_reaction = r.reaction_type
+
+    return {
+        "id": q.id,
+        "author": q.author,
+        "content": q.content,
+        "tags": q.tags,
+        "likes": q.likes,
+        "reactions": reaction_counts,
+        "user_reaction": user_reaction,
+        "comment_count": comment_count,
+    }
 
 @app.post("/questions", response_model=QuestionResponse)
 def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
@@ -354,7 +416,51 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
         "tags": db_question.tags,
         "likes": 0,
         "reactions": {},
-        "user_reaction": None
+        "user_reaction": None,
+        "comment_count": 0,
+    }
+
+@app.put("/questions/{question_id}", response_model=QuestionResponse)
+def update_question(question_id: int, payload: QuestionUpdate, db: Session = Depends(get_db)):
+    username = payload.username.strip()
+    content = payload.content.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+    if not content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+    if q.author != username:
+        raise HTTPException(status_code=403, detail="You can only edit your own posts")
+
+    q.content = content
+    if payload.tags is not None:
+        q.tags = payload.tags
+    db.commit()
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    user_id = user.id if user else None
+    reactions_query = db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == q.id).all()
+    comment_count = db.query(models.QuestionComment).filter(models.QuestionComment.question_id == q.id).count()
+
+    reaction_counts: dict[str, int] = {}
+    user_reaction: str | None = None
+    for r in reactions_query:
+        reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+        if user_id and r.user_id == user_id:
+            user_reaction = r.reaction_type
+
+    return {
+        "id": q.id,
+        "author": q.author,
+        "content": q.content,
+        "tags": q.tags,
+        "likes": q.likes,
+        "reactions": reaction_counts,
+        "user_reaction": user_reaction,
+        "comment_count": comment_count,
     }
 
 @app.delete("/questions/{question_id}")
@@ -371,9 +477,174 @@ def delete_question(question_id: int, username: str, db: Session = Depends(get_d
         raise HTTPException(status_code=403, detail="You can only delete your own posts")
 
     db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == question_id).delete(synchronize_session=False)
+    comment_ids = [cid for (cid,) in db.query(models.QuestionComment.id).filter(models.QuestionComment.question_id == question_id).all()]
+    if comment_ids:
+        db.query(models.CommentReaction).filter(models.CommentReaction.comment_id.in_(comment_ids)).delete(synchronize_session=False)
+    db.query(models.QuestionComment).filter(models.QuestionComment.question_id == question_id).delete(synchronize_session=False)
     db.delete(q)
     db.commit()
     return {"status": "deleted"}
+
+@app.get("/questions/{question_id}/comments", response_model=list[CommentResponse])
+def get_comments(question_id: int, username: str | None = None, db: Session = Depends(get_db)):
+    exists = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not exists:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    user_id = None
+    if username:
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user:
+            user_id = user.id
+
+    comments = (
+        db.query(models.QuestionComment)
+        .filter(models.QuestionComment.question_id == question_id)
+        .order_by(models.QuestionComment.created_at.asc(), models.QuestionComment.id.asc())
+        .all()
+    )
+
+    result = []
+    for c in comments:
+        reactions_query = db.query(models.CommentReaction).filter(models.CommentReaction.comment_id == c.id).all()
+        reaction_counts: dict[str, int] = {}
+        user_reaction: str | None = None
+        for r in reactions_query:
+            reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+            if user_id and r.user_id == user_id:
+                user_reaction = r.reaction_type
+
+        result.append({
+            "id": c.id,
+            "question_id": c.question_id,
+            "author": c.author,
+            "content": c.content,
+            "created_at": c.created_at,
+            "reactions": reaction_counts,
+            "user_reaction": user_reaction,
+        })
+
+    return result
+
+@app.post("/questions/{question_id}/comments", response_model=CommentResponse)
+def create_comment(question_id: int, comment: CommentCreate, db: Session = Depends(get_db)):
+    author = comment.author.strip()
+    content = comment.content.strip()
+    if not author:
+        raise HTTPException(status_code=400, detail="Author cannot be empty")
+    if not content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+
+    q = db.query(models.Question).filter(models.Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    db_comment = models.QuestionComment(question_id=question_id, author=author, content=content)
+    db.add(db_comment)
+    db.commit()
+    db.refresh(db_comment)
+    return {
+        "id": db_comment.id,
+        "question_id": db_comment.question_id,
+        "author": db_comment.author,
+        "content": db_comment.content,
+        "created_at": db_comment.created_at,
+        "reactions": {},
+        "user_reaction": None,
+    }
+
+@app.put("/comments/{comment_id}", response_model=CommentResponse)
+def update_comment(comment_id: int, payload: CommentUpdate, db: Session = Depends(get_db)):
+    username = payload.username.strip()
+    content = payload.content.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+    if not content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+
+    c = db.query(models.QuestionComment).filter(models.QuestionComment.id == comment_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if c.author != username:
+        raise HTTPException(status_code=403, detail="You can only edit your own comments")
+
+    c.content = content
+    db.commit()
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    user_id = user.id if user else None
+    reactions_query = db.query(models.CommentReaction).filter(models.CommentReaction.comment_id == c.id).all()
+    reaction_counts: dict[str, int] = {}
+    user_reaction: str | None = None
+    for r in reactions_query:
+        reaction_counts[r.reaction_type] = reaction_counts.get(r.reaction_type, 0) + 1
+        if user_id and r.user_id == user_id:
+            user_reaction = r.reaction_type
+
+    return {
+        "id": c.id,
+        "question_id": c.question_id,
+        "author": c.author,
+        "content": c.content,
+        "created_at": c.created_at,
+        "reactions": reaction_counts,
+        "user_reaction": user_reaction,
+    }
+
+@app.delete("/comments/{comment_id}")
+def delete_comment(comment_id: int, username: str, db: Session = Depends(get_db)):
+    username = username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+
+    c = db.query(models.QuestionComment).filter(models.QuestionComment.id == comment_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if c.author != username:
+        raise HTTPException(status_code=403, detail="You can only delete your own comments")
+
+    db.query(models.CommentReaction).filter(models.CommentReaction.comment_id == comment_id).delete(synchronize_session=False)
+    db.delete(c)
+    db.commit()
+    return {"status": "deleted"}
+
+@app.post("/comments/{comment_id}/react")
+def react_to_comment(comment_id: int, req: ReactionRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == req.username).first()
+    if not user:
+        user = models.User(username=req.username)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    comment = db.query(models.QuestionComment).filter(models.QuestionComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    existing = db.query(models.CommentReaction).filter(
+        models.CommentReaction.comment_id == comment_id,
+        models.CommentReaction.user_id == user.id
+    ).first()
+
+    if existing:
+        if existing.reaction_type == req.reaction_type:
+            db.delete(existing)
+            db.commit()
+            return {"status": "removed"}
+        else:
+            existing.reaction_type = req.reaction_type
+            db.commit()
+            return {"status": "updated"}
+    else:
+        new_reaction = models.CommentReaction(
+            comment_id=comment_id,
+            user_id=user.id,
+            reaction_type=req.reaction_type
+        )
+        db.add(new_reaction)
+        db.commit()
+        return {"status": "added"}
 
 @app.post("/questions/{question_id}/react")
 def react_to_question(question_id: int, req: ReactionRequest, db: Session = Depends(get_db)):

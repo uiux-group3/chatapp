@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import QuestionThread from './QuestionThread';
 
 interface User {
     id: number;
@@ -17,6 +18,7 @@ interface Question {
     tags: string[];
     reactions: Record<string, number>;
     user_reaction: string | null;
+    comment_count: number;
 }
 
 const REACTION_TYPES = [
@@ -33,6 +35,11 @@ export default function ForumFeed({ role, user }: Props) {
     const [inputTags, setInputTags] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeReactionMenu, setActiveReactionMenu] = useState<number | null>(null);
+    const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
+    const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState('');
+    const [editTags, setEditTags] = useState('');
+    const [savingEdit, setSavingEdit] = useState(false);
 
     const fetchQuestions = async () => {
         try {
@@ -162,6 +169,64 @@ export default function ForumFeed({ role, user }: Props) {
         }
     };
 
+    const openThread = (questionId: number) => {
+        setActiveReactionMenu(null);
+        setShowForm(false);
+        setSelectedQuestionId(questionId);
+    };
+
+    const startEditQuestion = (q: Question) => {
+        setActiveReactionMenu(null);
+        setEditingQuestionId(q.id);
+        setEditContent(q.content);
+        setEditTags(Array.isArray(q.tags) ? q.tags.join(', ') : '');
+    };
+
+    const cancelEditQuestion = () => {
+        setEditingQuestionId(null);
+        setEditContent('');
+        setEditTags('');
+        setSavingEdit(false);
+    };
+
+    const saveEditQuestion = async (questionId: number) => {
+        if (!user) return;
+        if (!editContent.trim() || savingEdit) return;
+
+        setSavingEdit(true);
+        try {
+            const tags = editTags.split(',').map(t => t.trim()).filter(Boolean);
+            const res = await fetch(`/api/questions/${questionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: user.username,
+                    content: editContent,
+                    tags: tags,
+                }),
+            });
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+            setQuestions(prev => prev.map(q => (q.id === questionId ? data : q)));
+            cancelEditQuestion();
+        } catch (err) {
+            console.error(err);
+            alert("編集に失敗しました");
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    if (selectedQuestionId !== null) {
+        return (
+            <QuestionThread
+                questionId={selectedQuestionId}
+                user={user}
+                onBack={() => setSelectedQuestionId(null)}
+            />
+        );
+    }
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
@@ -218,9 +283,24 @@ export default function ForumFeed({ role, user }: Props) {
                 )}
                 {questions.map(q => {
                     const isMyQuestion = user?.username === q.author;
+                    const isEditing = editingQuestionId === q.id;
                     return (
-                        <div key={q.id} className={`p-4 rounded-lg bg-slate-800 border transition-colors ${isMyQuestion ? 'border-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-700 hover:border-indigo-500'
-                            }`}>
+                        <div
+                            key={q.id}
+                            role="button"
+                            tabIndex={0}
+                            className={`cursor-pointer p-4 rounded-lg bg-slate-800 border transition-colors ${isMyQuestion ? 'border-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-700 hover:border-indigo-500'
+                            }`}
+                            onClick={() => {
+                                if (!isEditing) openThread(q.id);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    if (!isEditing) openThread(q.id);
+                                }
+                            }}
+                        >
                             <div className="flex justify-between text-sm text-slate-400 mb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">
@@ -230,23 +310,71 @@ export default function ForumFeed({ role, user }: Props) {
                                     {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex gap-2 flex-wrap justify-end">
-                                        {Array.isArray(q.tags) && q.tags.map((tag, i) => (
-                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
-                                        ))}
+	                                    <div className="flex gap-2 flex-wrap justify-end">
+	                                        {Array.isArray(q.tags) && q.tags.map((tag, i) => (
+	                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
+	                                        ))}
+	                                    </div>
+	                                    {isMyQuestion && (
+	                                        <button
+	                                            className="text-slate-400 text-xs hover:text-white"
+	                                            onClick={(e) => {
+	                                                e.stopPropagation();
+	                                                if (isEditing) {
+	                                                    cancelEditQuestion();
+	                                                } else {
+	                                                    startEditQuestion(q);
+	                                                }
+	                                            }}
+	                                            title={isEditing ? "キャンセル" : "編集"}
+	                                        >
+	                                            {isEditing ? 'キャンセル' : '編集'}
+	                                        </button>
+	                                    )}
+	                                    {isMyQuestion && (
+	                                        <button
+	                                            className="text-red-400 text-xs hover:text-red-300"
+	                                            onClick={(e) => {
+	                                                e.stopPropagation();
+	                                                deleteQuestion(q.id);
+	                                            }}
+	                                            title="削除"
+	                                        >
+	                                            削除
+	                                        </button>
+	                                    )}
+	                                </div>
+	                            </div>
+
+                            {isEditing ? (
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <textarea
+                                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 mb-2 text-white"
+                                        rows={4}
+                                        value={editContent}
+                                        onChange={e => setEditContent(e.target.value)}
+                                    />
+                                    <input
+                                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 mb-2 text-white text-sm"
+                                        value={editTags}
+                                        onChange={e => setEditTags(e.target.value)}
+                                        placeholder="タグ（例: #JS, #初心者）"
+                                    />
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-400">Enterでは送信されません</span>
+                                        <div className="flex items-center gap-2">
+                                            <button className="text-slate-400 text-sm" onClick={cancelEditQuestion} disabled={savingEdit}>
+                                                キャンセル
+                                            </button>
+                                            <button className="primary text-sm" onClick={() => saveEditQuestion(q.id)} disabled={savingEdit}>
+                                                {savingEdit ? '保存中...' : '保存'}
+                                            </button>
+                                        </div>
                                     </div>
-                                    {isMyQuestion && (
-                                        <button
-                                            className="text-red-400 text-xs hover:text-red-300"
-                                            onClick={() => deleteQuestion(q.id)}
-                                            title="削除"
-                                        >
-                                            削除
-                                        </button>
-                                    )}
                                 </div>
-                            </div>
-                            <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
+                            ) : (
+                                <p className="text-slate-200 mb-4 whitespace-pre-wrap">{q.content}</p>
+                            )}
 
                             {/* Reaction Bar */}
                             <div className="flex gap-2 flex-wrap border-t border-slate-700 pt-3 items-center">
@@ -260,14 +388,17 @@ export default function ForumFeed({ role, user }: Props) {
                                     return (
                                         <button
                                             key={r.type}
-                                            onClick={() => handleReaction(q.id, r.type)}
-                                            className={`flex items-center justify-center gap-2 px-2 py-1 rounded-full transition-all w-20 ${isActive
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleReaction(q.id, r.type);
+                                            }}
+                                            className={`flex items-center justify-center gap-2 px-2 py-1 rounded-full transition-all w-16 ${isActive
                                                     ? 'bg-indigo-600 text-white'
                                                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                                                 }`}
                                         >
-                                            <span className="text-lg">{r.icon}</span>
-                                            <span className={`text-sm ${count > 0 ? 'font-bold' : ''}`}>{count}</span>
+                                            <span className="text-sm">{r.icon}</span>
+                                            <span className={`text-xs ${count > 0 ? 'font-bold' : ''}`}>{count}</span>
                                         </button>
                                     );
                                 })}
@@ -276,13 +407,19 @@ export default function ForumFeed({ role, user }: Props) {
                                 <div className="relative">
                                     <button
                                         className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-                                        onClick={() => toggleReactionMenu(q.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleReactionMenu(q.id);
+                                        }}
                                     >
                                         +
                                     </button>
 
                                     {activeReactionMenu === q.id && (
-                                        <div className="absolute left-0 bottom-full mb-2 flex gap-1 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-10">
+                                        <div
+                                            className="absolute left-0 bottom-full mb-2 flex gap-1 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-10"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             {REACTION_TYPES.map(r => (
                                                 <button
                                                     key={r.type}
@@ -300,7 +437,15 @@ export default function ForumFeed({ role, user }: Props) {
                                     )}
                                 </div>
 
-                                <button className="ml-auto text-sm text-slate-400 hover:text-white">💬 コメントする</button>
+                                <button
+                                    className="ml-auto text-sm text-slate-400 hover:text-white"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        openThread(q.id);
+                                    }}
+                                >
+                                    💬 コメント {q.comment_count > 0 ? `(${q.comment_count})` : ''}
+                                </button>
                             </div>
                         </div>
                     );

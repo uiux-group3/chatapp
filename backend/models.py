@@ -28,6 +28,22 @@ class QuestionReaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     reaction_type = Column(String) # like, insightful, curious, funny
 
+class QuestionComment(Base):
+    __tablename__ = "question_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), index=True)
+    author = Column(String, default="Anonymous")
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class CommentReaction(Base):
+    __tablename__ = "comment_reactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("question_comments.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    reaction_type = Column(String) # like, insightful, curious, funny
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"

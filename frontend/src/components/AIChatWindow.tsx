@@ -124,12 +124,6 @@ export default function AIChatWindow({ user }: Props) {
                     rows={3}
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            sendMessage();
-                        }
-                    }}
                 />
                 <button className="primary h-12 w-24 shrink-0 font-bold" onClick={sendMessage} disabled={loading}>送信</button>
             </div>
