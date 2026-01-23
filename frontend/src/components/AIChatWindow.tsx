@@ -83,14 +83,13 @@ export default function AIChatWindow({ user }: Props) {
                 {loading && <div className="text-slate-500 text-sm animate-pulse">AIが入力中...</div>}
             </div>
 
-            <div className="flex gap-2">
-                <input
-                    type="text"
-                    placeholder="AIになんでも聞いてね..."
-                    className="flex-1"
+            <div className="flex gap-2 items-end">
+                <textarea
+                    placeholder="まずは状況を1行で。うまく書けなくてもOK"
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-white resize-none"
+                    rows={3}
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
                 />
                 <button className="primary" onClick={sendMessage} disabled={loading}>送信</button>
             </div>
