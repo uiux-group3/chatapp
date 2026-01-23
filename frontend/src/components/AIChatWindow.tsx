@@ -97,10 +97,7 @@ export default function AIChatWindow({ user }: Props) {
                         {m.role === 'user' && (
                             <span className="text-xs text-slate-500 shrink-0 mb-1">{formatTime(m.timestamp)}</span>
                         )}
-                        <div className={`p-3-5 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
-                            <div className="text-xs opacity-70 mb-1 uppercase flex items-center gap-1">
-                                {m.role === 'model' ? <span>AI Tutor</span> : <span>あなた</span>}
-                            </div>
+                        <div className={`px-2 py-0 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
                             <div className="text-sm leading-relaxed">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
                                     p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
