@@ -136,17 +136,7 @@ export default function ForumFeed({ role, user }: Props) {
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-lg">みんなの広場</h2>
-                {role === 'student' && !showForm && (
-                    <div className="flex flex-col items-end gap-1">
-                        <span className="text-xs text-slate-400">1行からでもOKです！</span>
-                        <button
-                            className="primary shadow-lg shadow-indigo-500/50"
-                            onClick={() => setShowForm(true)}
-                        >
-                            + 質問する
-                        </button>
-                    </div>
-                )}
+                {/* Small button removed */}
             </div>
 
             {showForm && (
@@ -177,6 +167,20 @@ export default function ForumFeed({ role, user }: Props) {
             )}
 
             <div className="flex-1 overflow-y-auto space-y-8 pr-2">
+                {/* Large Ask Question Button Card */}
+                {role === 'student' && !showForm && (
+                     <button 
+                        onClick={() => setShowForm(true)}
+                        className="w-full p-6 rounded-lg border-2 border-dashed border-indigo-400/50 bg-slate-800/50 hover:bg-slate-800 hover:border-indigo-400 transition-all group flex flex-col items-center justify-center gap-2 text-slate-900"
+                     >
+                        <div className="text-3xl bg-indigo-500/20 p-3 rounded-full text-indigo-400 group-hover:scale-110 transition-transform">
+                            ✏️
+                        </div>
+                        <span className="font-bold text-lg">質問を投稿する</span>
+                        <span className="text-sm text-slate-500">1行からでもOKです！</span>
+                     </button>
+                )}
+
                 {questions.length === 0 && (
                     <div className="text-center text-slate-500 py-10">
                         まだ質問はありません。最初の質問を投稿してみよう！
@@ -189,7 +193,10 @@ export default function ForumFeed({ role, user }: Props) {
                             }`}>
                             <div className="flex justify-between text-sm text-slate-400 mb-2">
                                 <div className="flex items-center gap-2">
-                                    <span>{q.author}</span>
+                                    <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">
+                                        👤
+                                    </div>
+                                    <span className="font-medium">{q.author}</span>
                                     {isMyQuestion && <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">あなた</span>}
                                 </div>
                                 <div className="flex gap-2">

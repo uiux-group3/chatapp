@@ -40,26 +40,26 @@ function App() {
   }
 
   return (
-    <div className="flex-col h-full bg-slate-900 text-white">
+    <div className="flex-col h-full">
       {/* Header */}
       <header className="glass-panel m-4 p-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Q-Chat
           </h1>
-          <div className="flex gap-2 text-sm bg-slate-800 p-1 rounded-lg">
+          <div className="flex gap-2 text-sm">
             <button
               className={view === 'forum' ? 'primary' : ''}
               onClick={() => setView('forum')}
             >
-              みんなの広場 (掲示板)
+              掲示板で質問する
             </button>
             {role === 'student' && (
               <button
                 className={view === 'chat' ? 'primary' : ''}
                 onClick={() => setView('chat')}
               >
-                マイAIバディ (相談)
+                AIに相談する
               </button>
             )}
             {role === 'lecturer' && (
@@ -74,8 +74,13 @@ function App() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-xs text-slate-400">
-            {user.username} さん | 現在のモード: <span className="font-bold text-white uppercase">{role === 'student' ? '学生' : '講師'}</span>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+             <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">
+                 👤
+             </div>
+             <div>
+                {user.username} さん <span className="mx-1">|</span> 現在のモード: <span className="font-bold text-slate-500 uppercase">{role === 'student' ? '学生' : '講師'}</span>
+             </div>
           </div>
           <button
             onClick={() => handleRoleChange(role === 'student' ? 'lecturer' : 'student')}
@@ -88,7 +93,8 @@ function App() {
               localStorage.removeItem('chat_app_user');
               setUser(null);
             }}
-            style={{ fontSize: '0.8rem', padding: '4px 8px', background: '#475569' }}
+            style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+            className="text-slate-500 hover:text-red-400 border-none bg-transparent shadow-none"
           >
             ログアウト
           </button>

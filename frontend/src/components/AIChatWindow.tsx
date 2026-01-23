@@ -76,7 +76,9 @@ export default function AIChatWindow({ user }: Props) {
                 )}
                 {messages.map((m, i) => (
                     <div key={i} className={`p-3 rounded-lg max-w-[80%] ${m.role === 'user' ? 'bg-indigo-600 self-end ml-auto' : 'bg-slate-700 self-start'}`}>
-                        <div className="text-xs text-slate-400 mb-1 uppercase">{m.role === 'model' ? 'AI Tutor' : 'あなた'}</div>
+                        <div className="text-xs text-slate-400 mb-1 uppercase flex items-center gap-1">
+                            {m.role === 'model' ? <span>🤖 AI Tutor</span> : <span>👤 あなた</span>}
+                        </div>
                         <div className="whitespace-pre-wrap">{m.content}</div>
                     </div>
                 ))}
