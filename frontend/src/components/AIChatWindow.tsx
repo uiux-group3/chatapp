@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface User {
     id: number;
@@ -23,12 +25,12 @@ export default function AIChatWindow({ user }: Props) {
         fetch(`/api/chat/history?session_id=${sessionId}`)
             .then(res => res.ok ? res.json() : [])
             .then(data => {
-                 if (Array.isArray(data)) {
-                     setMessages(data.map((msg: any) => ({
-                         role: msg.role === 'model' ? 'model' : 'user', 
-                         content: msg.content
-                     })));
-                 }
+                if (Array.isArray(data)) {
+                    setMessages(data.map((msg: any) => ({
+                        role: msg.role === 'model' ? 'model' : 'user',
+                        content: msg.content
+                    })));
+                }
             })
             .catch(err => console.error("Failed to load history", err));
     }, [sessionId]);
@@ -75,25 +77,33 @@ export default function AIChatWindow({ user }: Props) {
                     </div>
                 )}
                 {messages.map((m, i) => (
-                    <div key={i} className={`p-3 rounded-lg max-w-[80%] ${m.role === 'user' ? 'bg-indigo-600 self-end ml-auto' : 'bg-slate-700 self-start'}`}>
-                        <div className="text-xs text-slate-400 mb-1 uppercase flex items-center gap-1">
+                    <div key={i} className={`p-4 rounded-lg max-w-[85%] w-fit shadow-sm ${m.role === 'user' ? 'bg-indigo-600 self-end ml-auto text-white' : 'bg-slate-700 self-start text-slate-100'}`}>
+                        <div className="text-xs opacity-70 mb-1 uppercase flex items-center gap-1">
                             {m.role === 'model' ? <span>🤖 AI Tutor</span> : <span>👤 あなた</span>}
                         </div>
-                        <div className="whitespace-pre-wrap">{m.content}</div>
+                        <div className="text-sm leading-relaxed markdown-body">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                        </div>
                     </div>
                 ))}
                 {loading && <div className="text-slate-500 text-sm animate-pulse">AIが入力中...</div>}
             </div>
 
-            <div className="flex gap-2 items-end">
+            <div className="flex gap-2 w-full items-end">
                 <textarea
                     placeholder="まずは状況を1行で。うまく書けなくてもOK"
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-white resize-none"
+                    className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     rows={3}
                     value={input}
                     onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendMessage();
+                        }
+                    }}
                 />
-                <button className="primary" onClick={sendMessage} disabled={loading}>送信</button>
+                <button className="primary h-12 w-24 shrink-0 font-bold" onClick={sendMessage} disabled={loading}>送信</button>
             </div>
         </div>
     );

@@ -252,7 +252,7 @@ async def get_lecturer_insight(request: InsightRequest, db: Session = Depends(ge
 
     # 5. Construct System/Context Prompt
     prompt_context = f"""
-    You are a university lecturer's intelligent assistant "Insight AI".
+    You are a university lecturer's intelligent assistant "Class AI" for Insight Analysis.
     
     Your goal is to help the lecturer understand how students are doing based on two data sources:
     1. Student Chat Logs (Private 1:1 sessions with AI)

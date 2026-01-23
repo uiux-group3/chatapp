@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './App.css';
 import ForumFeed from './components/ForumFeed';
 import AIChatWindow from './components/AIChatWindow';
@@ -67,7 +69,7 @@ function App() {
                 className={view === 'monitoring' ? 'primary' : ''}
                 onClick={() => setView('monitoring')}
               >
-                AIインサイト
+                Class AI
               </button>
             )}
           </div>
@@ -75,12 +77,12 @@ function App() {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-400">
-             <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">
-                 👤
-             </div>
-             <div>
-                {user.username} さん <span className="mx-1">|</span> 現在のモード: <span className="font-bold text-slate-500 uppercase">{role === 'student' ? '学生' : '講師'}</span>
-             </div>
+            <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500">
+              👤
+            </div>
+            <div>
+              {user.username} さん <span className="mx-1">|</span> 現在のモード: <span className="font-bold text-slate-500 uppercase">{role === 'student' ? '学生' : '講師'}</span>
+            </div>
           </div>
           <button
             onClick={() => handleRoleChange(role === 'student' ? 'lecturer' : 'student')}
@@ -166,7 +168,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-indigo-400 font-bold">AIインサイト（クラス分析）</h2>
+        <h2 className="text-indigo-400 font-bold">Class AI（クラス分析）</h2>
         <span className="text-xs text-slate-500">チャット形式で深掘り分析ができます</span>
       </div>
 
@@ -178,17 +180,19 @@ function LecturerInsightBoard({ user }: { user: User }) {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`p-4 rounded-lg max-w-[90%] ${m.role === 'user' ? 'bg-indigo-900/50 self-end ml-auto border border-indigo-500/30' : 'bg-slate-700/50 self-start border border-slate-600'}`}>
-            <div className="text-xs text-slate-400 mb-1 font-bold">{m.role === 'model' ? 'Insight AI' : 'Lecturer'}</div>
-            <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+          <div key={i} className={`p-4 rounded-lg max-w-[90%] w-fit shadow-sm ${m.role === 'user' ? 'bg-indigo-900/50 self-end ml-auto border border-indigo-500/30' : 'bg-slate-700/50 self-start border border-slate-600'}`}>
+            <div className="text-xs text-slate-400 mb-1 font-bold">{m.role === 'model' ? 'Class AI' : '講師'}</div>
+            <div className="text-sm leading-relaxed markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+            </div>
           </div>
         ))}
         {loading && <div className="text-slate-500 text-sm animate-pulse ml-2">分析中...</div>}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 w-full">
         <textarea
-          className="flex-1 bg-slate-900 border border-slate-700 rounded p-3 text-white resize-none focus:border-indigo-500 transition-colors"
+          className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white resize-none focus:border-indigo-500 transition-colors"
           placeholder="AIに質問: 例「今日、学生がつまずいている点はどこ？」"
           rows={2}
           value={input}
@@ -200,7 +204,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
             }
           }}
         />
-        <button className="primary self-end h-12 w-24 flex items-center justify-center" onClick={askInsight} disabled={loading}>
+        <button className="primary self-end h-12 w-24 shrink-0 flex items-center justify-center font-bold" onClick={askInsight} disabled={loading}>
           {loading ? '...' : '送信'}
         </button>
       </div>
