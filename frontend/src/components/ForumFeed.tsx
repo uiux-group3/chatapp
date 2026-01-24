@@ -29,6 +29,8 @@ const REACTION_TYPES = [
     { type: 'funny', icon: '😂', label: 'うける' },
 ];
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export default function ForumFeed({ role, user }: Props) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -46,7 +48,7 @@ export default function ForumFeed({ role, user }: Props) {
         try {
             // Pass username if logged in to get 'user_reaction' status
             const query = user?.username ? `?username=${encodeURIComponent(user.username)}` : '';
-            const res = await fetch(`/api/questions${query}`);
+            const res = await fetch(`${API_BASE_URL}/questions${query}`);
             if (res.ok) {
                 const data = await res.json();
                 setQuestions(data);
@@ -67,7 +69,7 @@ export default function ForumFeed({ role, user }: Props) {
         setLoading(true);
         try {
             const tags = inputTags.split(',').map(t => t.trim()).filter(Boolean);
-            const res = await fetch('/api/questions', {
+            const res = await fetch(`${API_BASE_URL}/questions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -117,7 +119,7 @@ export default function ForumFeed({ role, user }: Props) {
         }));
 
         try {
-            await fetch(`/api/questions/${questionId}/react`, {
+            await fetch(`${API_BASE_URL}/questions/${questionId}/react`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -156,7 +158,7 @@ export default function ForumFeed({ role, user }: Props) {
         setActiveReactionMenu(null);
         setQuestions(prev => prev.filter(q => q.id !== questionId));
         try {
-            const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+            const res = await fetch(`${API_BASE_URL}/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
                 method: 'DELETE',
             });
             const data = await res.json().catch(() => ({} as any));
@@ -197,7 +199,7 @@ export default function ForumFeed({ role, user }: Props) {
         setSavingEdit(true);
         try {
             const tags = editTags.split(',').map(t => t.trim()).filter(Boolean);
-            const res = await fetch(`/api/questions/${questionId}`, {
+            const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -226,7 +228,7 @@ export default function ForumFeed({ role, user }: Props) {
 
         setQuestions(prev => prev.map(q => (q.id === questionId ? { ...q, resolved } : q)));
         try {
-            const res = await fetch(`/api/questions/${questionId}/resolve`, {
+            const res = await fetch(`${API_BASE_URL}/questions/${questionId}/resolve`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -291,16 +293,16 @@ export default function ForumFeed({ role, user }: Props) {
             <div className="flex-1 overflow-y-auto space-y-8 pr-2">
                 {/* Large Ask Question Button Card */}
                 {role === 'student' && !showForm && (
-                     <button 
+                    <button
                         onClick={() => setShowForm(true)}
                         className="w-full p-6 rounded-lg border-2 border-dashed border-indigo-400/50 bg-slate-800/50 hover:bg-slate-800 hover:border-indigo-400 transition-all group flex flex-col items-center justify-center gap-2 text-slate-900"
-                     >
+                    >
                         <div className="text-3xl bg-indigo-500/20 p-3 rounded-full text-indigo-400 group-hover:scale-110 transition-transform">
                             ✏️
                         </div>
                         <span className="font-bold text-lg">質問を投稿する</span>
                         <span className="text-sm text-slate-500">1行からでもOKです！</span>
-                     </button>
+                    </button>
                 )}
 
                 {questions.length === 0 && (
@@ -317,7 +319,7 @@ export default function ForumFeed({ role, user }: Props) {
                             role="button"
                             tabIndex={0}
                             className={`cursor-pointer p-4 rounded-lg bg-slate-800 border transition-colors ${isMyQuestion ? 'border-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-700 hover:border-indigo-500'
-                            }`}
+                                }`}
                             onClick={() => {
                                 if (!isEditing) openThread(q.id);
                             }}
@@ -366,54 +368,54 @@ export default function ForumFeed({ role, user }: Props) {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2">
-	                                    <div className="flex gap-2 flex-wrap justify-end">
-	                                        {Array.isArray(q.tags) && q.tags.map((tag, i) => (
-	                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
-	                                        ))}
-	                                    </div>
-	                                    {isMyQuestion && (
-	                                        <button
-	                                            className={`text-xs ${q.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
-	                                                }`}
-	                                            onClick={(e) => {
-	                                                e.stopPropagation();
-	                                                setResolved(q.id, !q.resolved);
-	                                            }}
-	                                            title={q.resolved ? "未解決に戻す" : "解決済みにする"}
-	                                        >
-	                                            {q.resolved ? '未解決に戻す' : '解決済みにする'}
-	                                        </button>
-	                                    )}
-	                                    {isMyQuestion && (
-	                                        <button
-	                                            className="text-slate-400 text-xs hover:text-white"
-	                                            onClick={(e) => {
-	                                                e.stopPropagation();
-	                                                if (isEditing) {
-	                                                    cancelEditQuestion();
-	                                                } else {
-	                                                    startEditQuestion(q);
-	                                                }
-	                                            }}
-	                                            title={isEditing ? "キャンセル" : "編集"}
-	                                        >
-	                                            {isEditing ? 'キャンセル' : '編集'}
-	                                        </button>
-	                                    )}
-	                                    {isMyQuestion && (
-	                                        <button
-	                                            className="text-red-400 text-xs hover:text-red-300"
-	                                            onClick={(e) => {
-	                                                e.stopPropagation();
-	                                                deleteQuestion(q.id);
-	                                            }}
-	                                            title="削除"
-	                                        >
-	                                            削除
-	                                        </button>
-	                                    )}
-	                                </div>
-	                            </div>
+                                    <div className="flex gap-2 flex-wrap justify-end">
+                                        {Array.isArray(q.tags) && q.tags.map((tag, i) => (
+                                            <span key={i} className="text-indigo-400">{tag.startsWith('#') ? tag : '#' + tag}</span>
+                                        ))}
+                                    </div>
+                                    {isMyQuestion && (
+                                        <button
+                                            className={`text-xs ${q.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
+                                                }`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setResolved(q.id, !q.resolved);
+                                            }}
+                                            title={q.resolved ? "未解決に戻す" : "解決済みにする"}
+                                        >
+                                            {q.resolved ? '未解決に戻す' : '解決済みにする'}
+                                        </button>
+                                    )}
+                                    {isMyQuestion && (
+                                        <button
+                                            className="text-slate-400 text-xs hover:text-white"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isEditing) {
+                                                    cancelEditQuestion();
+                                                } else {
+                                                    startEditQuestion(q);
+                                                }
+                                            }}
+                                            title={isEditing ? "キャンセル" : "編集"}
+                                        >
+                                            {isEditing ? 'キャンセル' : '編集'}
+                                        </button>
+                                    )}
+                                    {isMyQuestion && (
+                                        <button
+                                            className="text-red-400 text-xs hover:text-red-300"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteQuestion(q.id);
+                                            }}
+                                            title="削除"
+                                        >
+                                            削除
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
 
                             {isEditing ? (
                                 <div onClick={(e) => e.stopPropagation()}>
@@ -462,8 +464,8 @@ export default function ForumFeed({ role, user }: Props) {
                                                 handleReaction(q.id, r.type);
                                             }}
                                             className={`flex items-center justify-center gap-2 px-2 py-1 rounded-full transition-all w-16 ${isActive
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                                                 }`}
                                         >
                                             <span className="text-sm">{r.icon}</span>

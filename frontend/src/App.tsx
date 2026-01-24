@@ -14,7 +14,10 @@ interface User {
   username: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 function App() {
+
   const [role, setRole] = useState<Role>('student');
   const [view, setView] = useState<View>('forum');
   const [user, setUser] = useState<User | null>(null);
@@ -139,7 +142,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
 
   useEffect(() => {
     // Fetch history on mount
-    fetch(`/api/chat/history?session_id=${sessionId}`)
+    fetch(`${API_BASE_URL}/chat/history?session_id=${sessionId}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => {
         if (Array.isArray(data)) {
@@ -175,7 +178,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/lecturer/insight', {
+      const res = await fetch(`${API_BASE_URL}/lecturer/insight`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: userMsg, session_id: sessionId }),

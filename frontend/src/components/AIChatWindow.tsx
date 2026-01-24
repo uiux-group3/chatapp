@@ -11,6 +11,8 @@ interface Props {
     user?: User | null;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export default function AIChatWindow({ user }: Props) {
     const [messages, setMessages] = useState<{ role: 'user' | 'model', content: string, timestamp?: string }[]>([]);
     const [input, setInput] = useState('');
@@ -22,7 +24,7 @@ export default function AIChatWindow({ user }: Props) {
     useEffect(() => {
         if (!user) return;
         // Fetch history on mount
-        fetch(`/api/chat/history?session_id=${sessionId}`)
+        fetch(`${API_BASE_URL}/chat/history?session_id=${sessionId}`)
             .then(res => res.ok ? res.json() : [])
             .then(data => {
                 if (Array.isArray(data)) {
@@ -60,7 +62,7 @@ export default function AIChatWindow({ user }: Props) {
         setLoading(true);
 
         try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ session_id: sessionId, message: userMsg }),
