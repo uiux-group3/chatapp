@@ -523,7 +523,12 @@ def update_question(question_id: int, payload: QuestionUpdate, db: Session = Dep
     }
 
 @app.delete("/questions/{question_id}")
-def delete_question(question_id: int, username: str, db: Session = Depends(get_db)):
+def delete_question(
+    question_id: int,
+    username: str,
+    role: str = "student",
+    db: Session = Depends(get_db),
+):
     username = username.strip()
     if not username:
         raise HTTPException(status_code=400, detail="Username cannot be empty")
@@ -532,7 +537,8 @@ def delete_question(question_id: int, username: str, db: Session = Depends(get_d
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    if q.author != username:
+    is_lecturer = role.strip().lower() == "lecturer"
+    if (not is_lecturer) and (q.author != username):
         raise HTTPException(status_code=403, detail="You can only delete your own posts")
 
     db.query(models.QuestionReaction).filter(models.QuestionReaction.question_id == question_id).delete(synchronize_session=False)
@@ -651,7 +657,12 @@ def update_comment(comment_id: int, payload: CommentUpdate, db: Session = Depend
     }
 
 @app.delete("/comments/{comment_id}")
-def delete_comment(comment_id: int, username: str, db: Session = Depends(get_db)):
+def delete_comment(
+    comment_id: int,
+    username: str,
+    role: str = "student",
+    db: Session = Depends(get_db),
+):
     username = username.strip()
     if not username:
         raise HTTPException(status_code=400, detail="Username cannot be empty")
@@ -660,7 +671,8 @@ def delete_comment(comment_id: int, username: str, db: Session = Depends(get_db)
     if not c:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    if c.author != username:
+    is_lecturer = role.strip().lower() == "lecturer"
+    if (not is_lecturer) and (c.author != username):
         raise HTTPException(status_code=403, detail="You can only delete your own comments")
 
     db.query(models.CommentReaction).filter(models.CommentReaction.comment_id == comment_id).delete(synchronize_session=False)

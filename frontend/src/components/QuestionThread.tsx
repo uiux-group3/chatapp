@@ -28,11 +28,12 @@ interface Comment {
 
 interface Props {
   questionId: number;
+  role: 'student' | 'lecturer';
   user?: User | null;
   onBack: () => void;
 }
 
-export default function QuestionThread({ questionId, user, onBack }: Props) {
+export default function QuestionThread({ questionId, role, user, onBack }: Props) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +148,8 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
   const deleteQuestion = async () => {
     if (!user) return;
     if (!question) return;
-    if (user.username !== question.author) {
+    const canDelete = role === 'lecturer' || user.username === question.author;
+    if (!canDelete) {
       alert('自分の投稿のみ削除できます');
       return;
     }
@@ -156,7 +158,8 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     setQuestionReactionMenuOpen(false);
     setActiveReactionMenu(null);
     try {
-      const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+      const qp = new URLSearchParams({ username: user.username, role }).toString();
+      const res = await fetch(`/api/questions/${questionId}?${qp}`, {
         method: 'DELETE',
       });
       const data = await res.json().catch(() => ({} as any));
@@ -236,11 +239,19 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
   const deleteComment = async (commentId: number) => {
     if (!user) return;
+    const target = comments.find(c => c.id === commentId);
+    if (!target) return;
+    const canDelete = role === 'lecturer' || user.username === target.author;
+    if (!canDelete) {
+      alert('自分の投稿のみ削除できます');
+      return;
+    }
     if (!confirm('このコメントを削除しますか？')) return;
 
     setComments(prev => prev.filter(c => c.id !== commentId));
     try {
-      const res = await fetch(`/api/comments/${commentId}?username=${encodeURIComponent(user.username)}`, {
+      const qp = new URLSearchParams({ username: user.username, role }).toString();
+      const res = await fetch(`/api/comments/${commentId}?${qp}`, {
         method: 'DELETE',
       });
       const data = await res.json().catch(() => ({} as any));
@@ -376,19 +387,23 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
                     {tag.startsWith('#') ? tag : '#' + tag}
                   </span>
                 ))}
-              {user?.username === question.author && !editingQuestion && (
+              {(role === 'lecturer' || user?.username === question.author) && !editingQuestion && (
                 <>
-                  <button
-                    className={`text-xs ${question.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
-                      }`}
-                    onClick={() => setResolved(!question.resolved)}
-                    title={question.resolved ? '未解決に戻す' : '解決済みにする'}
-                  >
-                    {question.resolved ? '未解決に戻す' : '解決済みにする'}
-                  </button>
-                  <button className="text-slate-400 text-xs hover:text-white" onClick={startEditQuestion}>
-                    編集
-                  </button>
+                  {user?.username === question.author && (
+                    <>
+                      <button
+                        className={`text-xs ${question.resolved ? 'bg-slate-700 text-slate-900 hover:bg-slate-600' : 'bg-indigo-600 text-real-white hover:bg-emerald-600'
+                          }`}
+                        onClick={() => setResolved(!question.resolved)}
+                        title={question.resolved ? '未解決に戻す' : '解決済みにする'}
+                      >
+                        {question.resolved ? '未解決に戻す' : '解決済みにする'}
+                      </button>
+                      <button className="text-slate-400 text-xs hover:text-white" onClick={startEditQuestion}>
+                        編集
+                      </button>
+                    </>
+                  )}
                   <button className="text-red-400 text-xs hover:text-red-300" onClick={deleteQuestion}>
                     削除
                   </button>
@@ -488,6 +503,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
         {comments.map(c => {
           const isMine = user?.username === c.author;
           const isEditing = editingCommentId === c.id;
+          const canDelete = role === 'lecturer' || isMine;
           return (
             <div key={c.id} className="p-3 rounded-lg bg-slate-800 border border-slate-700">
               <div className="flex justify-between items-center mb-2">
@@ -495,9 +511,9 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
                   <span className="font-bold">{c.author}</span>
                   <span className="text-xs text-slate-500">{formatTime(c.created_at)}</span>
                 </div>
-                {isMine && (
+                {canDelete && (
                   <div className="flex items-center gap-2">
-                    {!isEditing && (
+                    {isMine && !isEditing && (
                       <button className="text-slate-400 text-xs hover:text-white" onClick={() => startEditComment(c)}>
                         編集
                       </button>

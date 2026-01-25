@@ -44,7 +44,12 @@ function App() {
   return (
     <div className="flex-col h-full">
       {/* Header */}
-      <header className="glass-panel m-4 p-4 flex justify-between items-center sticky top-0 z-10">
+      <header
+        className={`glass-panel m-4 p-4 flex justify-between items-center sticky top-0 z-10 ${role === 'lecturer'
+          ? 'ring-1 ring-amber-400/40'
+          : 'ring-1 ring-slate-700/30'
+          }`}
+      >
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Q-Chat
@@ -60,14 +65,34 @@ function App() {
               👤
             </div>
             <div>
-              {user.username} さん <span className="mx-1">|</span> 現在のモード: <span className="font-bold text-slate-500 uppercase">{role === 'student' ? '学生' : '講師'}</span>
+              {user.username} さん <span className="mx-1">|</span> 現在のモード:{' '}
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-bold ${role === 'lecturer'
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-400/40'
+                  : 'bg-slate-700/30 text-slate-400 border-slate-600/40'
+                  }`}
+              >
+                {role === 'lecturer' ? (
+                  <>
+                    <span aria-hidden>🧑‍🏫</span>
+                    講師
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden>🎓</span>
+                    学生
+                  </>
+                )}
+              </span>
             </div>
           </div>
           <button
             onClick={() => handleRoleChange(role === 'student' ? 'lecturer' : 'student')}
             style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+            className="border-none shadow-none text-slate-500 hover:text-white"
+            title="この切替ボタンはテスト用です（本番では権限切替の仕組みに置き換える想定）"
           >
-            {role === 'student' ? '講師モードへ切替' : '学生モードへ切替'}
+            {role === 'student' ? '講師モードへ切替（テスト用）' : '学生モードへ切替（テスト用）'}
           </button>
           <button
             onClick={() => {
@@ -119,6 +144,16 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4 rounded-t-none">
+        {role === 'lecturer' && (
+          <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span aria-hidden>🧑‍🏫</span>
+              <span className="font-bold">講師モード</span>
+              <span className="text-xs text-amber-200/80">（削除権限あり・テスト用切替中）</span>
+            </div>
+            <span className="text-xs text-amber-200/70">掲示板の全投稿を削除できます</span>
+          </div>
+        )}
         {view === 'forum' && <ForumFeed role={role} user={user} />}
         {view === 'chat' && role === 'student' && <AIChatWindow user={user} />}
         {view === 'monitoring' && role === 'lecturer' && (

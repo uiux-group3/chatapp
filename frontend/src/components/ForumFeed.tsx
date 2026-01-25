@@ -147,7 +147,8 @@ export default function ForumFeed({ role, user }: Props) {
         const target = questions.find(q => q.id === questionId);
         if (!target) return;
 
-        if (target.author !== user.username) {
+        const canDelete = role === 'lecturer' || target.author === user.username;
+        if (!canDelete) {
             alert("自分の投稿のみ削除できます");
             return;
         }
@@ -157,7 +158,8 @@ export default function ForumFeed({ role, user }: Props) {
         setActiveReactionMenu(null);
         setQuestions(prev => prev.filter(q => q.id !== questionId));
         try {
-            const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+            const qp = new URLSearchParams({ username: user.username, role }).toString();
+            const res = await fetch(`/api/questions/${questionId}?${qp}`, {
                 method: 'DELETE',
             });
             const data = await res.json().catch(() => ({} as any));
@@ -249,6 +251,7 @@ export default function ForumFeed({ role, user }: Props) {
         return (
             <QuestionThread
                 questionId={selectedQuestionId}
+                role={role}
                 user={user}
                 onBack={() => setSelectedQuestionId(null)}
             />
@@ -407,7 +410,7 @@ export default function ForumFeed({ role, user }: Props) {
 	                                            {isEditing ? 'キャンセル' : '編集'}
 	                                        </button>
 	                                    )}
-	                                    {isMyQuestion && (
+	                                    {(isMyQuestion || role === 'lecturer') && (
 	                                        <button
 	                                            className="text-red-400 text-xs hover:text-red-300"
 	                                            onClick={(e) => {
