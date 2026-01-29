@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './Markdown';
 
 interface User {
     id: number;
@@ -106,11 +105,7 @@ export default function AIChatWindow({ user }: Props) {
                         )}
                         <div className={`px-2 py-0 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
                             <div className="text-sm leading-relaxed">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                                    p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                    pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
-                                    code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
-                                }}>{formatMessage(m.content)}</ReactMarkdown>
+                                <Markdown content={formatMessage(m.content)} />
                             </div>
                         </div>
                         {m.role === 'model' && (

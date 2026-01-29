@@ -446,6 +446,64 @@ textarea:focus {
   mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
 }
 
+.md-code-block {
+  margin: 0.75rem 0;
+  border: 1px solid #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b1220;
+}
+
+.md-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.md-code-lang {
+  font-size: 0.75rem;
+  color: rgba(226, 232, 240, 0.8);
+  letter-spacing: 0.02em;
+}
+
+.md-copy-button {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: rgba(226, 232, 240, 0.95);
+  cursor: pointer;
+}
+
+.md-copy-button:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.md-code-pre {
+  margin: 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.md-inline-code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+}
+
 .w-16 {
   width: 4rem;
   min-width: 4rem;

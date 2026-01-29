@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import './App.css';
 import ForumFeed from './components/ForumFeed';
 import AIChatWindow from './components/AIChatWindow';
 import LoginModal from './components/LoginModal';
+import Markdown from './components/Markdown';
 
 type Role = 'student' | 'lecturer';
 type View = 'forum' | 'chat' | 'monitoring';
@@ -252,11 +251,7 @@ function LecturerInsightBoard({ user }: { user: User }) {
             )}
             <div className={`px-2 py-0 rounded-lg max-w-70p shadow-sm break-words ${m.role === 'user' ? 'bg-indigo-900/50 border border-indigo-500/30' : 'bg-slate-700/50 border border-slate-600'}`}>
               <div className="text-sm leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                  p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                  pre: ({ node, ...props }) => <pre className="bg-slate-900/50 p-2 rounded overflow-x-auto my-2" {...props} />,
-                  code: ({ node, ...props }) => <code className="bg-slate-900/30 px-1 rounded" {...props} />
-                }}>{formatMessage(m.content)}</ReactMarkdown>
+                <Markdown content={formatMessage(m.content)} />
               </div>
             </div>
             {m.role === 'model' && (
