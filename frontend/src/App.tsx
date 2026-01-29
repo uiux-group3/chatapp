@@ -143,7 +143,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4 rounded-t-none">
+      <main className="flex-1 overflow-hidden relative m-4 mt-0 glass-panel p-4 rounded-t-none flex flex-col">
         {role === 'lecturer' && (
           <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -154,11 +154,14 @@ function App() {
             <span className="text-xs text-amber-200/70">掲示板の全投稿を削除できます</span>
           </div>
         )}
-        {view === 'forum' && <ForumFeed role={role} user={user} />}
-        {view === 'chat' && role === 'student' && <AIChatWindow user={user} />}
-        {view === 'monitoring' && role === 'lecturer' && (
-          <LecturerInsightBoard user={user} />
-        )}
+
+        <div className="flex-1 min-h-0">
+          {view === 'forum' && <ForumFeed role={role} user={user} />}
+          {view === 'chat' && role === 'student' && <AIChatWindow user={user} />}
+          {view === 'monitoring' && role === 'lecturer' && (
+            <LecturerInsightBoard user={user} />
+          )}
+        </div>
       </main>
     </div>
   );
