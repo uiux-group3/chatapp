@@ -268,18 +268,24 @@ export default function ForumFeed({ role, user }: Props) {
             {showForm && (
                 <div className="bg-slate-800 p-4 rounded-lg mb-4 border border-indigo-500/50">
                     <textarea
-                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 mb-2 text-white"
-                        placeholder="質問内容を入力してね（例: 「変数宣言の違いがわかりません」、一行でもOK：『〜って何から始めればいい？』"
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
+                        placeholder="質問内容を入力してね！"
                         rows={3}
                         value={inputContent}
                         onChange={e => setInputContent(e.target.value)}
                     />
+                    <div className="text-xs text-slate-400 mb-4">
+                        例: <span className="text-slate-500">「for と map の違いは？」「このエラーの直し方は？（コードあり）」</span>
+                    </div>
                     <input
-                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 mb-2 text-white text-sm"
-                        placeholder="タグは迷ったら無記入でもOK（例: #JS, #初心者）"
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                        placeholder="タグは迷ったら無記入でもOK！"
                         value={inputTags}
                         onChange={e => setInputTags(e.target.value)}
                     />
+                    <div className="text-xs text-slate-400 mb-2">
+                        例: <span className="text-slate-500">#JS, #初心者, #配列, #エラー</span>
+                    </div>
                     <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-400">投稿後も削除できるので安心してください</span>
                         <div className="flex items-center gap-2">
