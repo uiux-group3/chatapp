@@ -6,6 +6,12 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+import sys
+import os
+
+# Add local directory to path for relative imports when running from root
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import models, database
 
 load_dotenv()
