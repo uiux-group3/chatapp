@@ -32,6 +32,8 @@ interface Props {
   onBack: () => void;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export default function QuestionThread({ questionId, user, onBack }: Props) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -56,8 +58,8 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     if (!opts?.silent) setLoading(true);
     try {
       const [qRes, cRes] = await Promise.all([
-        fetch(`/api/questions/${questionId}${usernameQuery}`),
-        fetch(`/api/questions/${questionId}/comments${usernameQuery}`),
+        fetch(`${API_BASE_URL}/questions/${questionId}${usernameQuery}`),
+        fetch(`${API_BASE_URL}/questions/${questionId}/comments${usernameQuery}`),
       ]);
       if (qRes.ok) setQuestion(await qRes.json());
       if (cRes.ok) setComments(await cRes.json());
@@ -83,7 +85,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
     setPosting(true);
     try {
-      const res = await fetch(`/api/questions/${questionId}/comments`, {
+      const res = await fetch(`${API_BASE_URL}/questions/${questionId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ author: user.username, content: input }),
@@ -123,7 +125,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     setSavingQuestion(true);
     try {
       const tags = editQuestionTags.split(',').map(t => t.trim()).filter(Boolean);
-      const res = await fetch(`/api/questions/${questionId}`, {
+      const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -156,7 +158,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     setQuestionReactionMenuOpen(false);
     setActiveReactionMenu(null);
     try {
-      const res = await fetch(`/api/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
+      const res = await fetch(`${API_BASE_URL}/questions/${questionId}?username=${encodeURIComponent(user.username)}`, {
         method: 'DELETE',
       });
       const data = await res.json().catch(() => ({} as any));
@@ -178,7 +180,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
     setQuestion(prev => (prev ? { ...prev, resolved } : prev));
     try {
-      const res = await fetch(`/api/questions/${questionId}/resolve`, {
+      const res = await fetch(`${API_BASE_URL}/questions/${questionId}/resolve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,7 +216,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
     setSavingComment(true);
     try {
-      const res = await fetch(`/api/comments/${commentId}`, {
+      const res = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -240,7 +242,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
 
     setComments(prev => prev.filter(c => c.id !== commentId));
     try {
-      const res = await fetch(`/api/comments/${commentId}?username=${encodeURIComponent(user.username)}`, {
+      const res = await fetch(`${API_BASE_URL}/comments/${commentId}?username=${encodeURIComponent(user.username)}`, {
         method: 'DELETE',
       });
       const data = await res.json().catch(() => ({} as any));
@@ -284,7 +286,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     });
 
     try {
-      await fetch(`/api/questions/${questionId}/react`, {
+      await fetch(`${API_BASE_URL}/questions/${questionId}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -328,7 +330,7 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
     );
 
     try {
-      await fetch(`/api/comments/${commentId}/react`, {
+      await fetch(`${API_BASE_URL}/comments/${commentId}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -447,14 +449,14 @@ export default function QuestionThread({ questionId, user, onBack }: Props) {
               );
             })}
 
-                <div className="relative">
-                  <button
-                    className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-                    onClick={() => setQuestionReactionMenuOpen(v => !v)}
-                    disabled={editingQuestion}
-                  >
-                    +
-                  </button>
+            <div className="relative">
+              <button
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+                onClick={() => setQuestionReactionMenuOpen(v => !v)}
+                disabled={editingQuestion}
+              >
+                +
+              </button>
 
               {questionReactionMenuOpen && (
                 <div className="absolute left-0 bottom-full mb-2 flex gap-1 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-10">

@@ -9,6 +9,8 @@ interface Props {
     onLogin: (user: User) => void;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export default function LoginModal({ onLogin }: Props) {
     const [username, setUsername] = useState('');
     const [loading, setLoading] = useState(false);
@@ -18,14 +20,14 @@ export default function LoginModal({ onLogin }: Props) {
         if (!username.trim()) return;
         setLoading(true);
         setError('');
-        
+
         try {
-            const res = await fetch('/api/login', {
+            const res = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: username.trim() }),
             });
-            
+
             if (res.ok) {
                 const user = await res.json();
                 onLogin(user);
@@ -66,7 +68,7 @@ export default function LoginModal({ onLogin }: Props) {
                 >
                     {loading ? '認証中...' : 'はじめる'}
                 </button>
-                
+
                 <p className="login-modal-hint">
                     ※ (テストモード)ニックネームを入力するだけで、次回も同じユーザーとして利用できます。
                 </p>
