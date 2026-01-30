@@ -21,11 +21,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 MODEL_NAME = 'gemini-2.5-flash'
 
-# Lightweight schema migration (SQLite)
+from sqlalchemy import inspect
+
+# Lightweight schema migration (Database Agnostic)
 def _ensure_questions_schema(engine) -> None:
-    with engine.begin() as conn:
-        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(questions)").fetchall()}
-        if "resolved" not in cols:
+    inspector = inspect(engine)
+    columns = [c["name"] for c in inspector.get_columns("questions")]
+    if "resolved" not in columns:
+        with engine.begin() as conn:
             conn.exec_driver_sql(
                 "ALTER TABLE questions ADD COLUMN resolved INTEGER NOT NULL DEFAULT 0"
             )
